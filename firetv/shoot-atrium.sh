@@ -37,6 +37,7 @@ printf '%s\n' "am force-stop $PKG" "sleep 1" "am start -n $PKG/.AtriumActivity" 
 
 echo "--- shots ---"
 # Focus starts on the first app. Rows below it: Trending, On your apps, Popular shows.
+# Moving up into the top bar lands on Home. Right of it: Get apps, then Settings.
 shoot atrium-01-home              ""          6
 shoot atrium-02-trending          "20"        3
 shoot atrium-03-on-your-apps      "20"        3
@@ -44,7 +45,8 @@ shoot atrium-04-popular-shows     "20"        3
 shoot atrium-05-detail            "19 23"     4
 shoot atrium-06-where-to-watch    "20"        2
 shoot atrium-07-app-menu          "4 19 19 82" 3
-shoot atrium-08-settings          "4 19 19 22 23" 3
+shoot atrium-08-settings          "4 19 19 22 22 23" 3
+shoot atrium-09-get-apps          "4 21 23"   3
 
 echo "--- back to the home screen ---"
 printf '%s\n' "input keyevent 4" "input keyevent 20" "input keyevent 20" "rm -f /sdcard/shot.png" \

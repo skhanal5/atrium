@@ -8,9 +8,36 @@ Dates of the runs: 18 October 2026 for the first version, 20 October 2026 for
 the redesign in `REDESIGN.md`, and 24 November 2026 for the content home
 screen. Build: `versionCode 1`, debug.
 
-The first section is the current design. The sections after it describe the
+The first two sections are the current design. The sections after it describe the
 previous design, the generated "room". They are kept because what they found
 about this TV still holds.
+
+## Get apps, 24 November 2026
+
+Tested on the device:
+
+- **Get apps** in the top bar, and the Get apps tile at the end of Your apps,
+  both open the screen.
+- Typing "spo" with the TV keyboard filtered the grid to Spotify, then the
+  apps with the topic "sports".
+- Spotify, not installed, opened its Appstore page. Back returned to Atrium.
+- **Search the full Appstore** opened the Appstore home, with Search on it.
+- Every package name in `AppCatalog` opened its own Appstore page. Twitch,
+  YouTube TV, Kodi and Pandora opened "App not Found" and were left out.
+
+Found on the device, and fixed:
+
+- Long rows did not slide, so focus could move off screen to the right. This
+  was in the content home screen too.
+- Amazon Music showed Installed and would not open. The debloat disables it.
+  Disabled apps no longer count as installed.
+- Moving up into the top bar went to the item used last, such as Settings.
+  It now lands on the current screen's item.
+- Opening the Appstore by its launcher entry shows "Your Apps & Channels",
+  not the store. The store's home screen is opened by name instead.
+
+Not tested: a second TV keyboard, such as a phone app, and typing with a
+remote that has a microphone.
 
 ## Content home screen, 24 November 2026
 

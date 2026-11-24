@@ -35,8 +35,8 @@ Each of these was tested on the TV.
 - **No opening a title inside Peacock or Apple TV.** TMDB does not give those
   apps' own title IDs. **Open** starts the app at its home screen.
 - **No Prime Video.** It closes again as soon as another app opens it.
-- **No Appstore search.** The search link opens the Amazon home screen on
-  Fire OS 6. Atrium opens one app's Appstore page by package name instead.
+- **No Appstore search link.** It opens the Amazon home screen on Fire OS 6.
+  Get apps searches its own list instead, and opens the Appstore home for the rest.
 - **No Starz or MGM+.** Their Fire TV package names could not be confirmed.
 
 ## Layout
@@ -137,6 +137,19 @@ frames a second.
 - Pictures stay in a 12 MB memory cache and a 48 MB disk cache.
 - Card corners are drawn with a bitmap shader, not a clip path.
 - Focus changes only view properties, so the GPU reuses what it drew.
+
+## Get apps
+
+- Reached from **Get apps** in the top bar, or the last tile in Your apps.
+- A search field, then a grid of 19 popular apps, 7 across.
+- Typing filters the grid as you type. Names match first, then topics, such
+  as "music", "sports" or "anime".
+- An installed app says **Installed** and opens. Any other opens its Amazon
+  Appstore page.
+- The last card, **Search the full Appstore**, opens the Appstore home, which
+  has Search on it.
+- Every app's package name was checked on the TV by opening its Appstore page.
+- Apps the debloat disabled do not count as installed, since they cannot open.
 
 ## Menus
 

@@ -41,12 +41,21 @@ public final class Content {
         return repository;
     }
 
-    /** Package names of every app on the TV, for matching streaming services. */
+    /**
+     * Package names of every app on the TV that can run, for matching
+     * streaming services and marking apps Installed.
+     *
+     * Disabled apps are left out. The debloat disables some, such as Amazon
+     * Music, and Android still lists them as installed. Counting them showed
+     * Installed on an app that could not open. Found on the TV.
+     */
     public static Set<String> installedPackages(Context context) {
         Set<String> out = new HashSet<>();
         try {
             for (PackageInfo p : context.getPackageManager().getInstalledPackages(0)) {
-                out.add(p.packageName);
+                if (p.applicationInfo != null && p.applicationInfo.enabled) {
+                    out.add(p.packageName);
+                }
             }
         } catch (RuntimeException e) {
             // The package list can fail when it is too large to send between

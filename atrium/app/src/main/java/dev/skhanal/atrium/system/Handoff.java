@@ -217,6 +217,21 @@ public final class Handoff {
         return start(context, i);
     }
 
+    /**
+     * Open the Amazon Appstore at its home screen, which has Search on it.
+     *
+     * Its launcher entry opens "Your Apps & Channels" instead, which is not
+     * the store, so the store's home activity is named. Tested on the TV.
+     */
+    public static boolean openAppstore(Context context) {
+        ComponentName store = new ComponentName("com.amazon.venezia", "com.amazon.venezia.ade.ADEHomeActivity");
+        if (canStart(context, store) && start(context, new Intent(Intent.ACTION_MAIN).setComponent(store)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))) {
+            return true;
+        }
+        return launchPackage(context, "com.amazon.venezia");
+    }
+
     /** Open a package by its own declared entry point. */
     public static boolean launchPackage(Context context, String pkg) {
         try {

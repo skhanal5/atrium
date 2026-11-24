@@ -75,7 +75,10 @@ public final class RowView extends LinearLayout {
             return;
         }
         int visible = getWidth() - getPaddingLeft() - getPaddingRight();
-        int max = Math.max(0, track.getWidth() - visible);
+        // The track is measured no wider than the screen, so its own width
+        // never shows the overflow. The last item's right edge does.
+        int contentWidth = items.get(items.size() - 1).getRight();
+        int max = Math.max(0, contentWidth - visible);
         float x = -Math.min(max, items.get(index).getLeft());
         track.animate().cancel();
         long d = Motion.d(Motion.SECTION);

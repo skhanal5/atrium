@@ -29,19 +29,32 @@ import java.util.Set;
 public final class StreamingApps {
 
     static final List<TvApp> ALL = Arrays.asList(
-            TvApp.of("YouTube", new String[] {"com.amazon.firetv.youtube"}, new Integer[] {}, 192),
-            TvApp.of("Peacock", new String[] {"com.peacock.peacockfiretv"}, new Integer[] {386, 387}),
-            TvApp.of("Apple TV", new String[] {"com.apple.atve.amazon.appletv"}, new Integer[] {350}, 2),
-            TvApp.of("Netflix", new String[] {"com.netflix.ninja"}, new Integer[] {8, 1796}),
-            TvApp.of("Disney+", new String[] {"com.disney.disneyplus"}, new Integer[] {337}),
-            TvApp.of("HBO Max", new String[] {"com.hbo.hbonow"}, new Integer[] {1899}),
-            TvApp.of("Hulu", new String[] {"com.hulu.plus"}, new Integer[] {15}),
-            TvApp.of("Paramount+", new String[] {"com.cbs.ott"}, new Integer[] {2303, 2616}),
-            TvApp.of("Tubi", new String[] {"com.tubitv.ott"}, new Integer[] {73}),
-            TvApp.of("Pluto TV", new String[] {"tv.pluto.android"}, new Integer[] {300}),
-            TvApp.of("Crunchyroll", new String[] {"com.crunchyroll.crunchyroid"}, new Integer[] {283}),
-            TvApp.of("Plex", new String[] {"com.plexapp.android"}, new Integer[] {538}),
-            TvApp.of("Philo", new String[] {"com.philo.philo"}, new Integer[] {2383}));
+            TvApp.of("YouTube", new String[] {"com.amazon.firetv.youtube"}, new Integer[] {}, 192)
+                    .withLogo("/5Maob4o5w8oZnNeYpCDyVFD3M7X.png").withTopics("videos"),
+            TvApp.of("Peacock", new String[] {"com.peacock.peacockfiretv"}, new Integer[] {386, 387})
+                    .withLogo("/a1UIdq5BrkcAxnxcUhFsNbXnxeu.png").withTopics("movies", "tv", "sports"),
+            TvApp.of("Apple TV", new String[] {"com.apple.atve.amazon.appletv"}, new Integer[] {350}, 2)
+                    .withLogo("/v9SnyvYt0U3KGgBH3Sbh3z4yODe.png").withTopics("movies", "tv"),
+            TvApp.of("Netflix", new String[] {"com.netflix.ninja"}, new Integer[] {8, 1796})
+                    .withLogo("/rK1KljqmbvO9HQa1PBFLILWah72.png").withTopics("movies", "tv"),
+            TvApp.of("Disney+", new String[] {"com.disney.disneyplus"}, new Integer[] {337})
+                    .withLogo("/5eZ872CghnHFLB1j8grszbrx0dx.png").withTopics("movies", "kids", "family"),
+            TvApp.of("HBO Max", new String[] {"com.hbo.hbonow"}, new Integer[] {1899})
+                    .withLogo("/skypuy7SXuugIQeYg0IglmzoKaS.png").withTopics("movies", "tv"),
+            TvApp.of("Hulu", new String[] {"com.hulu.plus"}, new Integer[] {15})
+                    .withLogo("/44uAnmSqvA4yBOdbPWN8YgQHjWm.png").withTopics("tv", "movies", "live"),
+            TvApp.of("Paramount+", new String[] {"com.cbs.ott"}, new Integer[] {2303, 2616})
+                    .withLogo("/4N4BMd0Mm0kHAmF7RZgL5lW3cwc.png").withTopics("movies", "tv", "sports"),
+            TvApp.of("Tubi", new String[] {"com.tubitv.ott"}, new Integer[] {73})
+                    .withLogo("/9dEuvA8wg5TSeFBZlPxSVxFdimJ.png").withTopics("free", "movies"),
+            TvApp.of("Pluto TV", new String[] {"tv.pluto.android"}, new Integer[] {300})
+                    .withLogo("/fN4czqaMQNLeF6sSSIjGbAWzvwK.png").withTopics("free", "live"),
+            TvApp.of("Crunchyroll", new String[] {"com.crunchyroll.crunchyroid"}, new Integer[] {283})
+                    .withLogo("/uFL3c4Cq8M6WoLymlC5Y8bmGytV.png").withTopics("anime"),
+            TvApp.of("Plex", new String[] {"com.plexapp.android"}, new Integer[] {538})
+                    .withLogo("/blAEhvx3XX8sV0fFVFk88FFjubs.png").withTopics("free", "movies", "media", "player"),
+            TvApp.of("Philo", new String[] {"com.philo.philo"}, new Integer[] {2383})
+                    .withLogo("/mfbhzQwmQKjm7bLZPF5CTeu3Ilc.png").withTopics("live", "tv"));
 
     private StreamingApps() {
     }

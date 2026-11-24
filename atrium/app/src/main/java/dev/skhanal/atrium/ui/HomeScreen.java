@@ -21,28 +21,28 @@ import dev.skhanal.atrium.content.WatchText;
 import dev.skhanal.atrium.data.AppEntry;
 
 /**
- * The home screen: the top bar, the hero, and the rows.
+ * The home screen: the hero and the rows. The top bar above it belongs to
+ * the activity, which shares it with the Get apps screen.
  *
  * The hero follows the remote. On a movie or show it shows that title and its
  * artwork. Above the content rows, where there is nothing to describe, it
  * shows the week's top five trending titles in turn.
  *
- * Rows, top to bottom in the focus grid: the top bar, the hero buttons, your
- * apps, then one row per content row in the feed.
+ * Rows, top to bottom in the focus grid: the hero buttons, your apps, then
+ * one row per content row in the feed. Row -1 means the top bar.
  */
 public final class HomeScreen extends FrameLayout {
 
     /** The left and right margin of everything. A TV can crop up to 5% of each edge, which is 48dp. */
-    static final float MARGIN_DP = 48f;
+    public static final float MARGIN_DP = 48f;
     private static final float HERO_TOP_DP = 72f;
     private static final float ROWS_TOP_DP = 342f;
     private static final int TRENDING_IN_HERO = 5;
     /** Moving along a row quickly should not load every picture it passes. */
     private static final long HERO_SETTLE_MS = 180;
 
-    static final int ROW_NAV = 0;
-    static final int ROW_HERO = 1;
-    static final int ROW_APPS = 2;
+    static final int ROW_HERO = 0;
+    public static final int ROW_APPS = 1;
 
     /** What the screen asks the activity to do. */
     public interface Actions {
@@ -51,9 +51,10 @@ public final class HomeScreen extends FrameLayout {
         void openTitle(Title title);
 
         void playTrailer(Title title);
+
+        void openGetApps();
     }
 
-    public final TopBar top;
     private final HeroView hero;
     private final LinearLayout rows;
     private final Backdrop backdrop;
@@ -78,13 +79,6 @@ public final class HomeScreen extends FrameLayout {
         this.backdrop = backdrop;
         this.actions = actions;
         setClipChildren(false);
-
-        top = new TopBar(context);
-        LayoutParams tp = new LayoutParams(LayoutParams.MATCH_PARENT, Dp.of(36f));
-        tp.leftMargin = Dp.of(MARGIN_DP - 14f);   // the first item's own padding lines its text up with the margin
-        tp.rightMargin = Dp.of(MARGIN_DP);
-        tp.topMargin = Dp.of(20f);
-        addView(top, tp);
 
         hero = new HeroView(context);
         hero.info.set("More info", Chip.Icon.INFO, () -> {
@@ -146,7 +140,7 @@ public final class HomeScreen extends FrameLayout {
 
     // ---- Content --------------------------------------------------------
 
-    /** Rebuild the apps row. Returns the tiles in order. */
+    /** Rebuild the apps row, with the Get apps tile at its end. Returns the app tiles in order. */
     public List<AppTile> setApps(List<AppEntry> apps) {
         if (appsRow != null) {
             rows.removeView(appsRow);
@@ -159,6 +153,7 @@ public final class HomeScreen extends FrameLayout {
             appsRow.add(t);
             tiles.add(t);
         }
+        appsRow.add(new GetAppsTile(getContext(), actions::openGetApps));
         rows.addView(appsRow, 0);
         return tiles;
     }
@@ -232,10 +227,9 @@ public final class HomeScreen extends FrameLayout {
         return t.details == null ? null : StreamingApps.watchHere(t.details.offers, installed);
     }
 
-    /** Every row the remote can reach, top to bottom, in focus-grid order. */
+    /** Every row the remote can reach below the top bar, in focus-grid order. */
     public List<List<Focusable>> focusRows() {
         List<List<Focusable>> out = new ArrayList<>();
-        out.add(new ArrayList<Focusable>(top.items()));
         List<Focusable> buttons = new ArrayList<>();
         if (heroTitle != null) {
             buttons.add(hero.info);

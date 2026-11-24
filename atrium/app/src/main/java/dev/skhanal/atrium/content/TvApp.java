@@ -19,17 +19,37 @@ public final class TvApp {
     final Set<Integer> included;
     /** TMDB services that rent and sell titles in this app. */
     final Set<Integer> store;
+    /** A TMDB image path for the app's logo, or null to draw its initial. */
+    public final String logo;
+    /** Words people search for that are not in the name, such as "music" or "sports". */
+    final List<String> topics;
 
-    TvApp(String name, List<String> packages, Set<Integer> included, Set<Integer> store) {
+    private TvApp(String name, List<String> packages, Set<Integer> included, Set<Integer> store,
+            String logo, List<String> topics) {
         this.name = name;
         this.packages = Collections.unmodifiableList(packages);
         this.included = included;
         this.store = store;
+        this.logo = logo;
+        this.topics = Collections.unmodifiableList(topics);
     }
 
     static TvApp of(String name, String[] packages, Integer[] included, Integer... store) {
-        return new TvApp(name, Arrays.asList(packages),
-                new HashSet<>(Arrays.asList(included)), new HashSet<>(Arrays.asList(store)));
+        return new TvApp(name, Arrays.asList(packages), new HashSet<>(Arrays.asList(included)),
+                new HashSet<>(Arrays.asList(store)), null, Collections.<String>emptyList());
+    }
+
+    /** An app with no TMDB services, listed only so it can be found and got. */
+    static TvApp app(String name, String pkg) {
+        return of(name, new String[] {pkg}, new Integer[] {});
+    }
+
+    TvApp withLogo(String path) {
+        return new TvApp(name, packages, included, store, path, topics);
+    }
+
+    TvApp withTopics(String... words) {
+        return new TvApp(name, packages, included, store, logo, Arrays.asList(words));
     }
 
     /** The package name the Amazon Appstore knows this app by, checked on the TV. */

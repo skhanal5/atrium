@@ -20,7 +20,9 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -28,6 +30,7 @@ import dev.skhanal.atrium.content.Content;
 import dev.skhanal.atrium.content.ContentRepository;
 import dev.skhanal.atrium.content.Links;
 import dev.skhanal.atrium.content.Title;
+import dev.skhanal.atrium.content.TvApp;
 import dev.skhanal.atrium.content.WatchOption;
 import dev.skhanal.atrium.data.AppEntry;
 import dev.skhanal.atrium.data.AppRepository;
@@ -42,10 +45,13 @@ import dev.skhanal.atrium.ui.DetailScreen;
 import dev.skhanal.atrium.ui.Dp;
 import dev.skhanal.atrium.ui.FocusGrid;
 import dev.skhanal.atrium.ui.Focusable;
+import dev.skhanal.atrium.ui.GetAppsScreen;
 import dev.skhanal.atrium.ui.HomeScreen;
+import dev.skhanal.atrium.ui.SearchBox;
 import dev.skhanal.atrium.ui.Motion;
 import dev.skhanal.atrium.ui.Sheet;
 import dev.skhanal.atrium.ui.SheetRow;
+import dev.skhanal.atrium.ui.TopBar;
 import dev.skhanal.atrium.ui.Type;
 
 /**
@@ -56,20 +62,49 @@ import dev.skhanal.atrium.ui.Type;
  * detail screen says where you can watch it on this TV.
  *
  * Focus is moved by this activity with a {@link FocusGrid}, not by Android's
- * focus search. The one exception is the settings menu, a {@link Sheet}, which
- * is a plain column and uses normal focus while it is open.
+ * focus search. Two things use normal Android focus while they are open: the
+ * settings menu, a {@link Sheet}, and the search field with the keyboard up.
+ *
+ * Row 0 of the home and Get apps screens is the top bar, which they share.
  */
-public final class AtriumActivity extends Activity implements HomeScreen.Actions, DetailScreen.Actions {
+public final class AtriumActivity extends Activity
+        implements HomeScreen.Actions, DetailScreen.Actions, GetAppsScreen.Actions {
 
-    private static final int ROW_APPS = 2;
+    /** Each screen, and the facts about it that the rest of the activity reads. */
+    private enum Screen {
+        HOME(0f, 0),
+        DETAIL(0.4f, -1),
+        APPS(0.75f, 1);
+
+        /** How much darker the artwork is behind it, 0 to 1. */
+        final float dim;
+        /** Which top-bar item is this screen, or -1 when the top bar is hidden. */
+        final int topItem;
+
+        Screen(float dim, int topItem) {
+            this.dim = dim;
+            this.topItem = topItem;
+        }
+
+        boolean hasTopBar() {
+            return topItem >= 0;
+        }
+    }
+
+    /** The apps row, counting the top bar as row 0. */
+    private static final int ROW_APPS = 1 + HomeScreen.ROW_APPS;
+    /** The search field on Get apps, counting the top bar as row 0. */
+    private static final int ROW_SEARCH = 1;
 
     private Prefs prefs;
     private AppRepository repo;
     private ContentRepository content;
 
     private Backdrop backdrop;
+    private TopBar top;
     private HomeScreen home;
     private DetailScreen detail;
+    private GetAppsScreen getApps;
     private Sheet sheet;
     private TextView message;
 
@@ -78,11 +113,18 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
     private List<AppTile> tiles = new ArrayList<>();
     private Set<String> installed = Collections.emptySet();
 
-    private final FocusGrid homeGrid = new FocusGrid();
-    private final FocusGrid detailGrid = new FocusGrid();
     private List<List<Focusable>> rows = new ArrayList<>();
     private Focusable current;
-    private boolean detailOpen;
+    private Screen screen = Screen.HOME;
+    /** Where the remote's focus is on each screen. Each activity starts fresh. */
+    private final Map<Screen, FocusGrid> grids = new EnumMap<>(Screen.class);
+
+    {
+        for (Screen s : Screen.values()) {
+            grids.put(s, new FocusGrid());
+        }
+    }
+
     private boolean arranging;
     /** True once a held Select has opened the app menu, so its release opens nothing. */
     private boolean longPressed;
@@ -118,11 +160,11 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
         pkg.addDataScheme("package");
         registerReceiver(packageReceiver, pkg);
 
-        home.top.tick();
+        top.tick();
         updateNotice();
         // A feed older than six hours is fetched again. A fresh one costs nothing.
         loadContent();
-        if (current != null && !detailOpen) {
+        if (current != null && screen == Screen.HOME) {
             // Restarts the hero's timer, which stopped when the app was left.
             applyFocus();
         }
@@ -166,19 +208,29 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
         root.addView(backdrop, new FrameLayout.LayoutParams(match, match));
 
         home = new HomeScreen(this, backdrop, this);
-        home.top.addItem("Home", () -> {
-            if (detailOpen) {
-                close();
-            }
-            focusApps(null);
-        }).setCurrent(true);
-        home.top.addItem("Settings", this::openSettings);
-        home.top.setUse24(prefs.clock24());
         root.addView(home, new FrameLayout.LayoutParams(match, match));
 
         detail = new DetailScreen(this, this);
         detail.setVisibility(View.GONE);
         root.addView(detail, new FrameLayout.LayoutParams(match, match));
+
+        getApps = new GetAppsScreen(this, this);
+        getApps.setVisibility(View.GONE);
+        getApps.search.setListener(searchListener);
+        root.addView(getApps, new FrameLayout.LayoutParams(match, match));
+
+        top = new TopBar(this);
+        top.addItem("Home", this::goHome);
+        top.addItem("Get apps", this::openGetApps);
+        top.addItem("Settings", this::openSettings);
+        top.items().get(Screen.HOME.topItem).setCurrent(true);
+        top.setUse24(prefs.clock24());
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(match, Dp.of(36f));
+        // The first item's own padding lines its text up with the margin.
+        tp.leftMargin = Dp.of(HomeScreen.MARGIN_DP - 14f);
+        tp.rightMargin = Dp.of(HomeScreen.MARGIN_DP);
+        tp.topMargin = Dp.of(20f);
+        root.addView(top, tp);
 
         message = new TextView(this);
         message.setTypeface(Type.semibold());
@@ -228,6 +280,7 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
             apps.addAll(ready);
             tiles = home.setApps(apps);
             installed = Content.installedPackages(this);
+            getApps.setInstalled(installed);
             // A streaming app may have come or gone, which changes "On your apps".
             // When it has not, this costs nothing.
             loadContent();
@@ -254,12 +307,32 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
     // ---- Focus ----------------------------------------------------------
 
     private FocusGrid grid() {
-        return detailOpen ? detailGrid : homeGrid;
+        return grid(screen);
+    }
+
+    private FocusGrid grid(Screen s) {
+        return grids.get(s);
+    }
+
+    /**
+     * Focus that arrives in the top bar lands on this screen's item, not on
+     * the item used last. That item can name another screen: the one chosen
+     * when this screen was left.
+     */
+    private void landInTopBar() {
+        if (screen.hasTopBar() && grid().row() == 0) {
+            grid().focus(0, screen.topItem);
+        }
     }
 
     /** Re-read the rows of the screen on show, keeping focus where it was. */
     private void refreshRows() {
-        rows = detailOpen ? detail.focusRows() : home.focusRows();
+        rows = new ArrayList<>();
+        if (screen.hasTopBar()) {
+            rows.add(new ArrayList<Focusable>(top.items()));
+        }
+        rows.addAll(screen == Screen.HOME ? home.focusRows()
+                : screen == Screen.APPS ? getApps.focusRows() : detail.focusRows());
         int[] sizes = new int[rows.size()];
         for (int i = 0; i < sizes.length; i++) {
             sizes[i] = rows.get(i).size();
@@ -287,8 +360,9 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
             }
             current = f;
         }
-        if (f != null && !detailOpen) {
-            home.onFocus(grid().row(), grid().column(), f);
+        if (f != null && screen == Screen.HOME) {
+            // The home screen counts its rows from below the top bar.
+            home.onFocus(grid().row() - 1, grid().column(), f);
             if (f instanceof AppTile) {
                 prefs.setLastFocus(((AppTile) f).entry().pkg);
             }
@@ -303,7 +377,7 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
                 index = i;
             }
         }
-        homeGrid.focus(ROW_APPS, index);
+        grid(Screen.HOME).focus(ROW_APPS, index);
         applyFocus();
     }
 
@@ -328,18 +402,55 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
         say(e.label + " would not open");
     }
 
-    @Override
-    public void openTitle(Title t) {
-        detailOpen = true;
-        home.pause();
-        home.setVisibility(View.GONE);
-        detail.show(t, installed);
-        detail.setVisibility(View.VISIBLE);
-        backdrop.setDim(0.4f);
-        backdrop.showArtwork(t.backdrop);
+    /**
+     * Switch screens. This is the one place that decides what is visible, how
+     * dark the artwork is, and which focus grid the remote moves.
+     */
+    private void show(Screen next) {
+        if (screen == Screen.HOME && next != Screen.HOME) {
+            home.pause();
+        }
+        if (screen == Screen.APPS && getApps.search.isEditing()) {
+            getApps.search.stopEditing();
+        }
+        screen = next;
+        home.setVisibility(next == Screen.HOME ? View.VISIBLE : View.GONE);
+        detail.setVisibility(next == Screen.DETAIL ? View.VISIBLE : View.GONE);
+        getApps.setVisibility(next == Screen.APPS ? View.VISIBLE : View.GONE);
+        top.setVisibility(next.hasTopBar() ? View.VISIBLE : View.GONE);
+        if (next.hasTopBar()) {
+            for (int i = 0; i < top.items().size(); i++) {
+                top.items().get(i).setCurrent(i == next.topItem);
+            }
+        }
+        backdrop.setDim(next.dim);
+        if (next == Screen.HOME) {
+            home.restoreBackdrop();
+        }
+        if (current != null) {
+            current.setFocused(false);
+        }
         current = null;
         refreshRows();
-        detailGrid.focus(0, 0);
+        landInTopBar();
+    }
+
+    /** Back to the home screen, where focus was. Pressed on Home, to the first app. */
+    private void goHome() {
+        if (screen == Screen.HOME) {
+            focusApps(null);
+            return;
+        }
+        show(Screen.HOME);
+        applyFocus();
+    }
+
+    @Override
+    public void openTitle(Title t) {
+        detail.show(t, installed);
+        show(Screen.DETAIL);
+        backdrop.showArtwork(t.backdrop);
+        grid(Screen.DETAIL).focus(0, 0);
         applyFocus();
     }
 
@@ -375,21 +486,62 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
 
     @Override
     public void close() {
-        if (!detailOpen) {
+        if (screen != Screen.DETAIL) {
             return;
         }
-        detailOpen = false;
-        detail.setVisibility(View.GONE);
-        home.setVisibility(View.VISIBLE);
-        backdrop.setDim(0f);
-        home.restoreBackdrop();
-        if (current != null) {
-            current.setFocused(false);
-        }
-        current = null;
-        refreshRows();
+        show(Screen.HOME);
         applyFocus();
     }
+
+    // ---- Get apps -------------------------------------------------------
+
+    @Override
+    public void openGetApps() {
+        if (screen == Screen.APPS) {
+            return;
+        }
+        show(Screen.APPS);
+        if (grid(Screen.APPS).row() < 0) {
+            grid(Screen.APPS).focus(ROW_SEARCH, 0);
+        }
+        applyFocus();
+    }
+
+    @Override
+    public void getApp(TvApp app) {
+        String pkg = app.installedPackage(installed);
+        boolean opened = pkg != null ? Handoff.launchPackage(this, pkg)
+                : Handoff.openUri(this, Links.appstorePage(app.appstorePackage()), null);
+        if (!opened) {
+            say(pkg != null ? app.name + " would not open" : "The Appstore would not open");
+        }
+    }
+
+    @Override
+    public void openAppstore() {
+        if (!Handoff.openAppstore(this)) {
+            say("The Appstore would not open");
+        }
+    }
+
+    private final SearchBox.Listener searchListener = new SearchBox.Listener() {
+        @Override
+        public void onSearch(String text) {
+            getApps.show(text);
+            current = null;
+            refreshRows();
+            grid(Screen.APPS).focus(ROW_SEARCH, 0);
+            applyFocus();
+        }
+
+        @Override
+        public void onDone() {
+            getApps.search.stopEditing();
+            // Straight to the first result, which is what a person looks at next.
+            grid(Screen.APPS).focus(ROW_SEARCH + 1, 0);
+            applyFocus();
+        }
+    };
 
     // ---- App menu and moving apps ---------------------------------------
 
@@ -454,16 +606,16 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
 
     /** Swap the app being moved with its neighbour, and keep focus on it. */
     private void moveApp(int delta) {
-        int from = homeGrid.column();
+        int from = grid(Screen.HOME).column();
         int to = from + delta;
-        if (homeGrid.row() != ROW_APPS || to < 0 || to >= tiles.size()) {
+        if (grid(Screen.HOME).row() != ROW_APPS || to < 0 || to >= tiles.size()) {
             return;
         }
         Collections.swap(apps, from, to);
         Collections.swap(tiles, from, to);
         home.appsRow().swap(from, to);
         refreshRows();
-        homeGrid.focus(ROW_APPS, to);
+        grid(Screen.HOME).focus(ROW_APPS, to);
         applyFocus();
     }
 
@@ -509,7 +661,7 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
         }));
         items.add(new Setting("24-hour clock", false, () -> onOff(prefs.clock24()), () -> {
             prefs.setClock24(!prefs.clock24());
-            home.top.setUse24(prefs.clock24());
+            top.setUse24(prefs.clock24());
         }));
         items.add(new Setting("Open Atrium on Home and wake", false, () -> onOff(prefs.replaceHome()), () -> {
             boolean on = !prefs.replaceHome();
@@ -613,6 +765,18 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
         boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
         int code = event.getKeyCode();
 
+        // While the keyboard has the search field, keys belong to it. Back
+        // gives the remote back to the grid.
+        if (screen == Screen.APPS && getApps.search.isEditing()) {
+            if (code == KeyEvent.KEYCODE_BACK) {
+                if (!down) {
+                    getApps.search.stopEditing();
+                }
+                return true;
+            }
+            return super.dispatchKeyEvent(event);
+        }
+
         // While an app is being moved, these keys are consumed whole, press
         // and release. Consuming only the press would let the release of the
         // Select that ends the move open the app underneath.
@@ -644,10 +808,8 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
             case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (down && grid().move(
-                        code == KeyEvent.KEYCODE_DPAD_UP ? -1 : code == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : 0,
-                        code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 0)) {
-                    applyFocus();
+                if (down) {
+                    moveFocus(code);
                 }
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
@@ -661,16 +823,33 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
                 }
                 return true;
             case KeyEvent.KEYCODE_BACK:
-                // Back closes the detail screen. On the home screen it has
+                // Back goes to the home screen. On the home screen it has
                 // nowhere to go, so it is swallowed rather than dropping the
                 // user onto a black screen.
-                if (!down && detailOpen) {
-                    close();
+                if (!down && screen != Screen.HOME) {
+                    goHome();
                 }
                 return true;
             default:
                 return super.dispatchKeyEvent(event);
         }
+    }
+
+    private void moveFocus(int code) {
+        FocusGrid g = grid();
+        int fromRow = g.row();
+        boolean moved = g.move(
+                code == KeyEvent.KEYCODE_DPAD_UP ? -1 : code == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : 0,
+                code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 0);
+        if (!moved) {
+            return;
+        }
+        // Rows below the top bar keep their memory, which is what makes coming
+        // back to a row land where you left it.
+        if (fromRow != 0) {
+            landInTopBar();
+        }
+        applyFocus();
     }
 
     /**
@@ -710,20 +889,23 @@ public final class AtriumActivity extends Activity implements HomeScreen.Actions
         if (sheet.isOpen()) {
             sheet.close();
         }
-        close();
-        focusApps(focusedApp() != null ? focusedApp() : prefs.lastFocus());
+        String pkg = focusedApp() != null ? focusedApp() : prefs.lastFocus();
+        if (screen != Screen.HOME) {
+            show(Screen.HOME);
+        }
+        focusApps(pkg);
     }
 
     // ---- Receivers ------------------------------------------------------
 
     private void updateNotice() {
-        home.top.setNotice(Handoff.isOnline(this) ? null : "Offline");
+        top.setNotice(Handoff.isOnline(this) ? null : "Offline");
     }
 
     private final BroadcastReceiver timeReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            home.top.tick();
+            top.tick();
             updateNotice();
         }
     };

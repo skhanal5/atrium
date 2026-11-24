@@ -67,6 +67,9 @@ Select a title to see where you can watch it in the United States. Apps on
 this TV say **Open**. Apps you do not have say **Get the app** and open their
 Amazon Appstore page.
 
+**Get apps**, in the top bar and at the end of your apps, lists popular apps
+with a search field. The last card opens the Amazon Appstore for anything else.
+
 Every screen, taken from the TV:
 
 | File | Shows |
@@ -79,6 +82,7 @@ Every screen, taken from the TV:
 | `atrium-06-where-to-watch.png` | Where to watch, with Peacock focused |
 | `atrium-07-app-menu.png` | The menu on an app |
 | `atrium-08-settings.png` | Settings |
+| `atrium-09-get-apps.png` | Get apps: search, popular apps, and the full Appstore |
 
 `firetv/shots/01-before-stock-home.png` is what the TV looked like before.
 
@@ -161,6 +165,8 @@ for measured results and limits.
 - **Get the app** opens the app's Amazon Appstore page. Every package name
   Atrium uses was checked on the TV.
 - **Watch trailer** plays the trailer in YouTube.
+- **Get apps**: typing with the TV keyboard filters the apps, an app you do not
+  have opens its Appstore page, and the last card opens the Appstore home.
 - Finding and opening every installed app.
 - Moving an app along the row, hiding apps, and bringing them back. Hold
   Select on an app, or press Menu, for its menu.
@@ -185,7 +191,7 @@ These were tested on the device and refused. They are not offered in the UI.
 | Replace the system Home handler | Protected by Fire OS. Atrium follows Home presses instead. See above |
 | Open a title inside Peacock or Apple TV | TMDB does not give those apps' own title IDs, and Peacock accepts no links. **Open** starts the app at its home screen |
 | Open Prime Video | Prime Video closes again as soon as another app opens it. It is left out of Where to watch |
-| Search the Appstore from Atrium | The Appstore search link opens the Amazon home screen on Fire OS 6. Atrium opens one app's page by package name instead |
+| Search the Appstore from inside Atrium | The Appstore search link opens the Amazon home screen on Fire OS 6. Atrium searches its own list of apps, and opens the Appstore home, which has Search, for the rest |
 | Continue watching from Netflix, Prime Video and so on | No legitimate API gives a third-party launcher that history |
 | Date and Bluetooth settings screens | Those intents do not resolve on Fire OS 6 |
 | Display and Sound, Accessibility, Preferences, My Account | All guarded by `com.amazon.tv.permission.LAUNCHER_SETTINGS`, which is `signature\|amazon` |

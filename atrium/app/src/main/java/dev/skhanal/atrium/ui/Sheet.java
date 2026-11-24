@@ -13,11 +13,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A menu, drawn as words over the dimmed room.
+ * A menu, drawn as words over the darkened screen.
  *
- * There is no card and no border. The room stays visible behind a scrim, so
- * opening a menu feels like the lights going down rather than a new screen
- * arriving. That is cheap to draw and keeps one visual language throughout.
+ * There is no card and no border. The artwork stays faintly visible behind a
+ * scrim, so opening a menu feels like the lights going down rather than a new
+ * screen arriving. It is also cheap to draw.
  */
 public final class Sheet extends FrameLayout {
 
@@ -45,31 +45,28 @@ public final class Sheet extends FrameLayout {
         super(context);
         setFocusable(false);
         setWillNotDraw(false);
-        // The room stays just perceptible behind the menu, so opening one reads
-        // as the lights going down rather than as a new screen.
-        //
-        // This started much lighter, which looked better in isolation and was
-        // unusable on the TV: the clock and the app row showed through and
-        // collided with the menu text. A menu has to be readable first.
-        scrimPaint.setColor(0xF2070810);
+        // A lighter scrim looked better in isolation and was unusable on the
+        // TV: the rows showed through and collided with the menu text. A menu
+        // has to be readable first.
+        scrimPaint.setColor(Colors.SCRIM);
 
-        titlePaint.setTypeface(Type.medium());
+        titlePaint.setTypeface(Type.semibold());
         titlePaint.setTextSize(Dp.sp(TITLE_SP));
-        titlePaint.setColor(Palette.TEXT_TERTIARY);
+        titlePaint.setColor(Colors.TEXT_3);
         titlePaint.setLetterSpacing(0.22f);
 
         column = new LinearLayout(context);
         column.setOrientation(LinearLayout.VERTICAL);
         LayoutParams lp = new LayoutParams(Dp.of(ROW_WIDTH_DP), LayoutParams.WRAP_CONTENT);
         lp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
-        // The menu sits in the same column as the hero, so opening one does not
-        // move the eye anywhere it was not already looking.
-        lp.leftMargin = Dp.of(HomeLayout.CONTENT_X);
+        // The menu lines up with the hero, so opening one does not move the
+        // eye anywhere it was not already looking.
+        lp.leftMargin = Dp.of(HomeScreen.MARGIN_DP);
         addView(column, lp);
     }
 
     public void configure(String title, List<String> labels, Callback callback) {
-        this.title = title == null ? "" : title.toUpperCase();
+        this.title = title == null ? "" : title.toUpperCase(java.util.Locale.US);
         this.callback = callback;
         column.removeAllViews();
         rows.clear();
@@ -187,7 +184,7 @@ public final class Sheet extends FrameLayout {
     protected void onDraw(Canvas canvas) {
         canvas.drawRect(0, 0, getWidth(), getHeight(), scrimPaint);
         if (!title.isEmpty()) {
-            float x = Dp.f(HomeLayout.CONTENT_X) + Dp.f(23f);
+            float x = Dp.f(HomeScreen.MARGIN_DP) + Dp.f(23f);
             float y = column.getTop() - Dp.f(22f);
             canvas.drawText(title, x, y, titlePaint);
         }

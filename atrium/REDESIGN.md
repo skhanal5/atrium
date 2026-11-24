@@ -1,5 +1,9 @@
 # Atrium 2, the redesign
 
+> **History.** This describes the previous design, the generated "room". It
+> was replaced on 24 November 2026 by the content home screen in `DESIGN.md`.
+> It is kept because what it found about this TV still holds.
+
 The first version of Atrium worked and was too plain. This is what was wrong
 with it, the three directions that were drawn to replace it, which one was
 built, and what this TV allows.

@@ -19,7 +19,7 @@ public final class AppEntry {
     public int accent;
     /** True when the icon is a bare logo and needs a surface behind it. */
     public boolean needsPlate;
-    /** Jost, or the system font when the name needs characters Jost lacks. */
+    /** Inter, or the system font when the name needs characters Inter lacks. */
     public Typeface typeface;
 
     public AppEntry(String pkg, ComponentName component, String label) {

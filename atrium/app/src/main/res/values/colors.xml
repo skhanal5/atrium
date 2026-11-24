@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Only the window background lives here. Every other colour is a token in
-         Palette.java, because the light field mixes colours at runtime. -->
-    <color name="base_deep">#FF05060A</color>
+    <!-- Only the window background lives here, so a cold start shows the same
+         ink as the first frame. Every other colour is in Colors.java. -->
+    <color name="base_deep">#FF0A0D14</color>
 </resources>

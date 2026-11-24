@@ -200,6 +200,23 @@ public final class Handoff {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
+    /**
+     * Open a link, in one named app when a package is given.
+     *
+     * Naming the app matters for YouTube links: several apps on this TV claim
+     * them, and without a name Android shows a chooser instead.
+     */
+    public static boolean openUri(Context context, String uri, String pkg) {
+        if (uri == null) {
+            return false;
+        }
+        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (pkg != null) {
+            i.setPackage(pkg);
+        }
+        return start(context, i);
+    }
+
     /** Open a package by its own declared entry point. */
     public static boolean launchPackage(Context context, String pkg) {
         try {

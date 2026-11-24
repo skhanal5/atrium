@@ -12,9 +12,7 @@ import android.view.View;
  * One choice in a menu.
  *
  * The menus in Atrium are not cards or panels. They are words in the dark,
- * over a dimmed room. That keeps them in the same language as the rest of the
- * launcher, which is type and light rather than boxes and borders, and it
- * means a menu costs almost nothing to draw.
+ * over the dimmed screen, and a menu costs almost nothing to draw.
  *
  * Focus brightens the word and slides a short rule in on its left. The rule
  * matters: brightness alone is a colour cue, and the mark gives a second,
@@ -22,8 +20,8 @@ import android.view.View;
  */
 public final class SheetRow extends View {
 
-    private static final float SIZE_SP = 23f;
-    private static final float PAD_V_DP = 13f;
+    private static final float SIZE_SP = 17f;
+    private static final float PAD_V_DP = 9f;
     private static final float MARK_W_DP = 3f;
     private static final float MARK_GAP_DP = 20f;
 
@@ -45,14 +43,14 @@ public final class SheetRow extends View {
         setFocusableInTouchMode(false);
         setWillNotDraw(false);
         setBackground(null);
-        paint.setTypeface(Type.light());
+        paint.setTypeface(Type.regular());
         paint.setTextSize(Dp.sp(SIZE_SP));
-        paint.setColor(Palette.TEXT_SECONDARY);
-        markPaint.setColor(Palette.TEXT_PRIMARY);
-        valuePaint.setTypeface(Type.medium());
+        paint.setColor(Colors.TEXT_2);
+        markPaint.setColor(Colors.TEXT);
+        valuePaint.setTypeface(Type.semibold());
         valuePaint.setTextSize(Dp.sp(13f));
         valuePaint.setLetterSpacing(0.18f);
-        valuePaint.setColor(Palette.TEXT_TERTIARY);
+        valuePaint.setColor(Colors.TEXT_3);
     }
 
     public void setText(String v) {
@@ -73,7 +71,7 @@ public final class SheetRow extends View {
     public void setRowEnabled(boolean on) {
         enabled = on;
         setFocusable(on);
-        paint.setColor(on ? Palette.TEXT_SECONDARY : Palette.TEXT_FAINT);
+        paint.setColor(on ? Colors.TEXT_2 : Colors.TEXT_3);
         invalidate();
     }
 
@@ -114,8 +112,8 @@ public final class SheetRow extends View {
         if (!enabled) {
             return;
         }
-        paint.setColor(focused ? Palette.TEXT_PRIMARY : Palette.TEXT_SECONDARY);
-        valuePaint.setColor(focused ? Palette.TEXT_SECONDARY : Palette.TEXT_TERTIARY);
+        paint.setColor(focused ? Colors.TEXT : Colors.TEXT_2);
+        valuePaint.setColor(focused ? Colors.TEXT_2 : Colors.TEXT_3);
         long d = Motion.d(Motion.FOCUS);
         if (d == 0) {
             mark = focused ? 1f : 0f;

@@ -5,8 +5,86 @@ OS 6.7.1.1 (Android 7.1.2, API 25), over ADB. Nothing in this file is estimated
 and nothing is from a simulator.
 
 Dates of the runs: 18 October 2026 for the first version, 20 October 2026 for
-the redesign in `REDESIGN.md`. Build: `versionCode 1`, debug. Every number
-below was re-measured on 20 October against the redesigned launcher.
+the redesign in `REDESIGN.md`, and 24 November 2026 for the content home
+screen. Build: `versionCode 1`, debug.
+
+The first section is the current design. The sections after it describe the
+previous design, the generated "room". They are kept because what they found
+about this TV still holds.
+
+## Content home screen, 24 November 2026
+
+### Performance
+
+Frame timing, with `dumpsys gfxinfo` reset first, then 27 fast remote presses
+across Trending, On your apps and Popular shows:
+
+| | |
+|---|---|
+| Frames | 1,303 |
+| Janky frames | 42 (3.2%) |
+| Median | 5ms |
+| 90th, 95th, 99th percentile | 9ms, 16ms, 21ms |
+
+The budget is 16.7ms. The previous design had 0 janky frames out of 469. Most
+of the new jank is the first frame that draws a new card picture, when the
+picture is copied to the GPU.
+
+Memory, from `dumpsys meminfo` after the same run:
+
+| | Before the fix | After |
+|---|---|---|
+| Total PSS | 131 MB | 87 MB |
+| Java heap (holds decoded pictures on Android 7.1) | 48 MB | 28 MB |
+| Graphics | 64 MB | 39 MB |
+
+The fix: hero pictures are shaded into RGB_565 with dithering instead of full
+colour, only the next trending picture is loaded ahead, and the memory picture
+cache is capped at 12 MB. The previous design used 29.4 MB. The difference is
+the artwork. The TV has about 285 MB free.
+
+Cold start, `am start -W` after `am force-stop`, three runs: 609ms, 552ms,
+490ms. The previous design measured 371 to 424ms.
+
+The APK is 317 KB. Inter adds about 190 KB, cut down to Latin characters.
+
+### Tested on the device
+
+- Home, Trending, On your apps and Popular shows, each focused, with the hero
+  and artwork following the remote.
+- The detail screen and Where to watch.
+- **Open** in Peacock: Peacock came to the front.
+- **Watch trailer**: YouTube came to the front.
+- **Get the app** on Hulu: the Hulu Appstore page opened.
+- Every package name in `StreamingApps` opened its own Appstore page. Each was
+  checked by screenshot. Four names opened "App not Found" and were fixed or
+  removed.
+- The app menu, by holding Select and by the Menu button.
+- Moving an app along the row, and putting it first again.
+- Settings, with every value shown.
+- A feed saved by an older build was fetched again when the streaming apps
+  did not match.
+
+### Found on the device, and fixed
+
+- Rows scrolling up drew over the hero. The row area now clips by hand.
+- Prime Video closes again when another app opens it. It is left out.
+- The Appstore search link opens the Amazon home screen. Each app's page is
+  opened by package name instead.
+- The Menu button opened the app menu and its release closed it. It now opens
+  on release.
+- A long press sent over ADB opened the app instead of its menu. Android's
+  long-press flag is now honoured as well as the hold time.
+
+### Not tested
+
+- Pulling the network cable with the new screen. The offline copy is covered
+  by unit tests only.
+- **Open** in Apple TV from the detail screen. It starts the app by package
+  name, as for Peacock, which was tested. This button itself was not pressed.
+- Reduce motion with the new screen.
+- A library of many apps. This TV has 9 launchable apps.
+- Running for days, through several six-hour feed refreshes.
 
 ## Performance
 

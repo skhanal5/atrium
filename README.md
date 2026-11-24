@@ -37,9 +37,9 @@ The TV drops off the network in standby. Wake it before running anything here.
 
 - `atrium/` is the home screen, `dev.skhanal.atrium`. Original work.
   - [`atrium/DESIGN.md`](atrium/DESIGN.md) is what it looks like and why.
-  - [`atrium/REDESIGN.md`](atrium/REDESIGN.md) is how it got there: what the
-    first version got wrong, the three directions drawn to replace it, and
-    what this TV does and does not allow.
+  - [`atrium/REDESIGN.md`](atrium/REDESIGN.md) is the history of the
+    previous design, the generated "room". It is kept for what it found out
+    about this TV.
   - [`atrium/TESTING.md`](atrium/TESTING.md) is what was measured on the TV,
     including what was not tested.
 - `firetv/` is the work written for this TV.
@@ -55,25 +55,30 @@ The TV drops off the network in standby. Wake it before running anything here.
 
 ## What it looks like
 
-![Atrium home screen, Silk Browser focused](firetv/shots/atrium-02-home-silk.png)
+![Atrium home screen](firetv/shots/atrium-01-home.png)
 
-The room takes its colour from the icon you are pointing at. Focus Silk Browser
-and the room turns teal. Focus YouTube and it turns warm red. The colour is read
-out of the icon's own pixels, not from a list of brand colours.
+The week's trending movies and shows fill the screen. Your apps sit in a row
+under them, each on a plate of its own icon colour. Point the remote at a
+title and its artwork fills the screen.
 
-![Atrium home screen, YouTube focused](firetv/shots/atrium-01-home.png)
+![Where to watch](firetv/shots/atrium-06-where-to-watch.png)
+
+Select a title to see where you can watch it in the United States. Apps on
+this TV say **Open**. Apps you do not have say **Get the app** and open their
+Amazon Appstore page.
 
 Every screen, taken from the TV:
 
 | File | Shows |
 |---|---|
-| `atrium-01-home.png` | Home, YouTube focused, red room |
-| `atrium-02-home-silk.png` | Home, Silk Browser focused, teal room |
-| `atrium-03-app-menu.png` | The menu on an app. Words in the dark, no panel |
-| `atrium-04-tools-row.png` | A tool focused. Peacock has no colour in its icon, so the room keeps the light of the hour |
-| `atrium-05-apps-grid.png` | All apps, with the room pushed back behind it |
-| `atrium-06-preferences.png` | Preferences |
-| `atrium-07-arrange.png` | Moving an app in the row |
+| `atrium-01-home.png` | Home. The hero shows the top five trending titles in turn |
+| `atrium-02-trending.png` | A card in Trending this week focused. The hero follows it |
+| `atrium-03-on-your-apps.png` | Titles included with the streaming apps on this TV |
+| `atrium-04-popular-shows.png` | Popular shows, as posters |
+| `atrium-05-detail.png` | The detail screen for one title |
+| `atrium-06-where-to-watch.png` | Where to watch, with Peacock focused |
+| `atrium-07-app-menu.png` | The menu on an app |
+| `atrium-08-settings.png` | Settings |
 
 `firetv/shots/01-before-stock-home.png` is what the TV looked like before.
 
@@ -90,6 +95,17 @@ sdkmanager "platforms;android-34" "build-tools;34.0.0"
 python3 -m venv tools/venv && tools/venv/bin/pip install adb-shell rsa cryptography
 ```
 
+Movie and show rows need a free TMDB account. Make one at themoviedb.org,
+then go to `Settings` > `API` and copy the **API Read Access Token**. Put it
+in `~/.gradle/gradle.properties`, never in this repository:
+
+```
+TMDB_READ_TOKEN=eyJhbGciOi...
+```
+
+The token is built into the APK, so anyone who copies the APK off the TV can
+read it. A build without a token still works and shows apps only.
+
 Then:
 
 ```sh
@@ -99,7 +115,7 @@ TV_HOST=10.0.0.71 firetv/install-atrium.sh
 That builds and installs Atrium and grants `READ_LOGS`. It leaves Amazon's
 launcher enabled.
 
-Then enable **Atrium > Open Atrium from Home and TV wake**.
+Then turn on **Settings > Open Atrium on Home and wake**.
 
 To remove Atrium:
 
@@ -111,8 +127,8 @@ TV_HOST=10.0.0.71 firetv/uninstall-atrium.sh
 
 Fire OS still sends Home to Amazon's launcher. Atrium reads the short Home
 press from the system log and opens over it. Long Home presses and Amazon
-settings keep their normal behavior. The **Fire TV** tool opens Amazon's home
-on purpose. It stays there until you press Home or leave it.
+settings keep their normal behavior. **Settings > Fire TV home screen** opens
+Amazon's home on purpose. It stays there until you press Home or leave it.
 
 The normal Android launcher choice and accessibility watcher do not work on
 this TV. Earlier notes concluded that no Home workaround was possible. That
@@ -137,22 +153,27 @@ for measured results and limits.
 
 ### Works, and was tested on the TV
 
+- Rows of trending movies, titles on your streaming apps, and popular shows,
+  with artwork, from TMDB.
+- A detail screen for each title, with where to watch it in the United States.
+- **Open** starts an installed app: Peacock, Apple TV and YouTube were opened
+  from the detail screen.
+- **Get the app** opens the app's Amazon Appstore page. Every package name
+  Atrium uses was checked on the TV.
+- **Watch trailer** plays the trailer in YouTube.
 - Finding and opening every installed app.
-- Rearranging apps, hiding them, and bringing them back. Reordering is in
-  `Atrium` > `Rearrange apps`, and holding Select on an app does the same.
+- Moving an app along the row, hiding apps, and bringing them back. Hold
+  Select on an app, or press Menu, for its menu.
 - Handing off to Fire TV settings: Network, and System (the My Fire TV screen).
-- The clock, the date, and a room that changes through the day.
-- Focus, light and label all restored when you come back from an app.
-- Everything above with the network unplugged. There is no cloud dependency,
-  no account, and no analytics.
+- Focus restored when you come back from an app.
+- With the network unplugged, the last rows are shown from the TV's own copy.
 
-Measured on the device: **0 janky frames out of 469**, a 5ms median frame
-against a 16.7ms budget, **16.9 MB** of memory, and a **227ms** cold start. The
-APK is **180 KB**. Details and method are in
-[`atrium/TESTING.md`](atrium/TESTING.md).
+Measured on the device: **3.2% janky frames** while moving fast along the
+rows (42 of 1,303), a 5ms median frame against a 16.7ms budget, **87 MB** of
+memory, and a **490 to 609ms** cold start. The APK is **317 KB**. Details and
+method are in [`atrium/TESTING.md`](atrium/TESTING.md).
 
-Reordering apps is implemented but was not driven end to end on the device.
-A few other things were not tested, and they are listed honestly in that file.
+A few things were not tested, and they are listed in that file.
 
 ### Cannot be done on this TV
 
@@ -162,6 +183,9 @@ These were tested on the device and refused. They are not offered in the UI.
 |---|---|
 | Switch to HDMI 1/2/3 or Composite | `com.amazon.tv.inputpreference.permission.LAUNCH_INPUTS` and `com.amazon.tv.permission.TUNE_INPUT` are both `signature\|amazon`. Even ADB shell is denied |
 | Replace the system Home handler | Protected by Fire OS. Atrium follows Home presses instead. See above |
+| Open a title inside Peacock or Apple TV | TMDB does not give those apps' own title IDs, and Peacock accepts no links. **Open** starts the app at its home screen |
+| Open Prime Video | Prime Video closes again as soon as another app opens it. It is left out of Where to watch |
+| Search the Appstore from Atrium | The Appstore search link opens the Amazon home screen on Fire OS 6. Atrium opens one app's page by package name instead |
 | Continue watching from Netflix, Prime Video and so on | No legitimate API gives a third-party launcher that history |
 | Date and Bluetooth settings screens | Those intents do not resolve on Fire OS 6 |
 | Display and Sound, Accessibility, Preferences, My Account | All guarded by `com.amazon.tv.permission.LAUNCHER_SETTINGS`, which is `signature\|amazon` |
@@ -179,7 +203,10 @@ allowed. Switching to them is not.
 - No tracking.
 - No location permission. Network state is used for the offline notice.
 - Boot access restarts the watchers. Log access detects Home presses.
-- Atrium does not request Internet access.
+- Internet access is used for TMDB only: `api.themoviedb.org` for titles and
+  where to watch, and `image.tmdb.org` for artwork. Nothing about the TV or
+  the person using it is sent. The last rows are saved on the TV, so the home
+  screen still has them when the network is down.
 
 ## The debloat
 
@@ -218,6 +245,10 @@ device. That is wrong. It works.
 `tools/`, the small ADB client, comes from
 [tv-vibehack](https://github.com/Gathin23/tv-vibehack) by Gathin23, used under
 the MIT licence in `LICENSE`.
+
+Movie and show data and artwork come from [TMDB](https://www.themoviedb.org).
+This product uses the TMDB API but is not endorsed or certified by TMDB.
+Where-to-watch data is provided to TMDB by JustWatch.
 
 `atrium/` is original and shares no code with that project. It uses the Jost
 typeface under the SIL Open Font Licence, in

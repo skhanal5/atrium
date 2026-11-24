@@ -7,33 +7,35 @@ import android.graphics.Typeface;
 /**
  * The typefaces, loaded once.
  *
- * Atrium uses one family, Jost, in three weights. One family keeps every screen
- * in the same voice. Size, weight and letter spacing carry the hierarchy instead
- * of a second typeface.
+ * Atrium uses one family, Inter, in four weights. Inter was drawn for screens,
+ * so it stays clear at sofa distance, and it is plain enough to sit under movie
+ * artwork without competing with it.
  *
- * The files are static weights. Jost ships as a variable font, and Android 7.1
- * cannot read variable axes, so asking for 'wght' at runtime would silently give
- * the same weight everywhere.
+ * The files are static weights cut down to Latin characters. Inter ships as a
+ * variable font, and Android 7.1 cannot read variable axes, so a variable file
+ * would draw every weight the same.
  */
 public final class Type {
 
-    private static Typeface light;
     private static Typeface regular;
     private static Typeface medium;
+    private static Typeface semibold;
+    private static Typeface bold;
 
-    /** Used when a label contains characters Jost does not have. */
+    /** Used when a label contains characters the Latin cut does not have. */
     private static final Typeface FALLBACK = Typeface.SANS_SERIF;
 
     private Type() {
     }
 
     public static void init(Context context) {
-        if (light != null) {
+        if (regular != null) {
             return;
         }
-        light = load(context, "fonts/Jost-Light.ttf", Typeface.NORMAL);
-        regular = load(context, "fonts/Jost-Regular.ttf", Typeface.NORMAL);
-        medium = load(context, "fonts/Jost-Medium.ttf", Typeface.BOLD);
+        regular = load(context, "fonts/Inter-Regular.ttf", Typeface.NORMAL);
+        medium = load(context, "fonts/Inter-Medium.ttf", Typeface.NORMAL);
+        semibold = load(context, "fonts/Inter-SemiBold.ttf", Typeface.BOLD);
+        bold = load(context, "fonts/Inter-Bold.ttf", Typeface.BOLD);
     }
 
     private static Typeface load(Context context, String path, int fallbackStyle) {
@@ -45,10 +47,6 @@ public final class Type {
         }
     }
 
-    public static Typeface light() {
-        return light != null ? light : FALLBACK;
-    }
-
     public static Typeface regular() {
         return regular != null ? regular : FALLBACK;
     }
@@ -57,13 +55,21 @@ public final class Type {
         return medium != null ? medium : FALLBACK;
     }
 
+    public static Typeface semibold() {
+        return semibold != null ? semibold : FALLBACK;
+    }
+
+    public static Typeface bold() {
+        return bold != null ? bold : FALLBACK;
+    }
+
     /**
-     * The typeface to use for a label that came from another app.
+     * The typeface to use for text that came from someone else, such as an app
+     * name or a film title.
      *
-     * App names are not ours, so they can hold any character. Jost covers Latin
-     * only. If a name needs something it does not have, that one label falls
-     * back to the system font, which has the full set. Without this the name
-     * would draw as empty boxes.
+     * The Latin cut has no Greek, Cyrillic or CJK. If a name needs a character
+     * it does not have, that one label falls back to the system font, which
+     * has the full set. Without this the name would draw as empty boxes.
      */
     public static Typeface forLabel(String label, Typeface preferred) {
         if (label == null || label.isEmpty()) {

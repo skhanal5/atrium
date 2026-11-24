@@ -19,8 +19,6 @@ public final class Prefs {
     private static final String FILE = "atrium";
     private static final String KEY_ORDER = "order";
     private static final String KEY_HIDDEN = "hidden";
-    private static final String KEY_LIGHT = "light";
-    private static final String KEY_ACCENT = "accent";
     private static final String KEY_REDUCE_MOTION = "reduce_motion";
     private static final String KEY_CLOCK_24 = "clock_24";
     private static final String KEY_LAST_FOCUS = "last_focus";
@@ -56,22 +54,6 @@ public final class Prefs {
     }
 
     // ---- Appearance -----------------------------------------------------
-
-    public int light() {
-        return sp.getInt(KEY_LIGHT, 0);
-    }
-
-    public void setLight(int preset) {
-        sp.edit().putInt(KEY_LIGHT, preset).apply();
-    }
-
-    public boolean accentFromApp() {
-        return sp.getBoolean(KEY_ACCENT, true);
-    }
-
-    public void setAccentFromApp(boolean on) {
-        sp.edit().putBoolean(KEY_ACCENT, on).apply();
-    }
 
     public boolean reduceMotion() {
         return sp.getBoolean(KEY_REDUCE_MOTION, false);

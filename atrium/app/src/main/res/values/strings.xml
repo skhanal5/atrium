@@ -2,82 +2,11 @@
 <resources>
     <string name="app_name">Atrium</string>
 
-    <!-- Home screen -->
-    <string name="empty_title">No apps yet</string>
-    <string name="empty_body">Install an app from the Appstore and it will appear here.</string>
-    <string name="offline">Offline</string>
-
-    <!-- The rail down the left -->
-    <string name="rail_home">Home</string>
-    <string name="rail_apps">Apps</string>
-    <string name="rail_settings">Settings</string>
-
-    <!-- Row headings -->
-    <string name="row_apps">Your apps</string>
-    <string name="row_tools">Tools</string>
-    <string name="section_all_apps">All apps</string>
-
-    <!-- The hero -->
-    <string name="hero_morning">This morning</string>
-    <string name="hero_afternoon">This afternoon</string>
-    <string name="hero_evening">This evening</string>
-    <string name="hero_night">Tonight</string>
-    <string name="hero_empty_body">Install an app from the Appstore and it will appear here.</string>
-    <string name="action_open">Open</string>
-    <string name="action_options">Options</string>
-
-    <!-- When an app was last opened from here. The launcher recorded this
-         itself. It is not watch history, which no app on this TV can read. -->
-    <string name="never_opened">You have not opened this from here yet</string>
-    <string name="opened_just_now">Opened a moment ago</string>
-    <string name="opened_minutes">Opened %1$d minutes ago</string>
-    <string name="opened_yesterday">Opened yesterday</string>
-    <string name="opened_days">Opened %1$d days ago</string>
-    <string name="opened_a_while">Opened a while ago</string>
-
-    <!-- The tools row, and the same destinations in Settings -->
+    <!-- Fire TV settings screens Atrium can open, listed in Settings -->
     <string name="footer_network">Network</string>
     <string name="footer_system">System</string>
-    <string name="footer_atrium">Atrium</string>
-    <string name="tool_network_sub">Wi-Fi and network</string>
-    <string name="tool_system_sub">About this TV</string>
-    <string name="tool_firetv_sub">Amazon home screen</string>
-    <string name="tool_atrium_sub">Light, apps, motion</string>
 
-    <!-- App menu, opened by holding Select or pressing the Menu button -->
-    <string name="menu_pin">Put first in the row</string>
-    <string name="menu_rearrange">Move this app</string>
-    <string name="menu_hide">Hide from home</string>
-    <string name="menu_app_info">App info</string>
-    <string name="arrange_hint">Left and right to move  ·  Select when done</string>
-    <string name="cannot_open">That app would not open</string>
-
-    <!-- Atrium preferences -->
-    <string name="prefs_title">Atrium</string>
-    <string name="prefs_light">Light</string>
-    <string name="prefs_light_auto">Follow time of day</string>
-    <string name="prefs_light_warm">Warm</string>
-    <string name="prefs_light_cool">Cool</string>
-    <string name="prefs_light_mono">Monochrome</string>
-    <string name="prefs_accent">Tint light by app</string>
-    <string name="prefs_motion">Reduce motion</string>
-    <string name="prefs_clock">24-hour clock</string>
-    <string name="prefs_rearrange">Rearrange apps</string>
-    <string name="prefs_hidden">Hidden apps</string>
-    <string name="prefs_replace_home">Open Atrium from Home and TV wake</string>
-    
+    <!-- The accessibility watcher that opens Atrium over the Amazon home screen -->
     <string name="watcher_label">Open Atrium from Home</string>
-    <string name="home_on">On</string>
     <string name="watcher_description">Opens Atrium when the Fire TV home screen appears, so the Home button reaches Atrium. Atrium cannot replace the Home button directly, because Fire OS reserves it. This reads only the name of the window that opens. Nothing leaves the TV.</string>
-    <string name="footer_firetv">Fire TV</string>
-    <string name="home_setup_hint">Settings  ·  Accessibility  ·  Open Atrium from Home</string>
-    <string name="prefs_on">On</string>
-    <string name="prefs_off">Off</string>
-    <string name="prefs_restore">Show all apps again</string>
-    <string name="prefs_none_hidden">Nothing is hidden</string>
-    <string name="unavailable">Not available on this TV</string>
-    <plurals name="opened_hours">
-        <item quantity="one">Opened an hour ago</item>
-        <item quantity="other">Opened %1$d hours ago</item>
-    </plurals>
 </resources>

@@ -5,145 +5,105 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Bitmap;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
-import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Supplier;
 
+import dev.skhanal.atrium.content.Content;
+import dev.skhanal.atrium.content.ContentRepository;
+import dev.skhanal.atrium.content.Links;
+import dev.skhanal.atrium.content.Title;
+import dev.skhanal.atrium.content.WatchOption;
 import dev.skhanal.atrium.data.AppEntry;
 import dev.skhanal.atrium.data.AppRepository;
 import dev.skhanal.atrium.data.Prefs;
-import dev.skhanal.atrium.data.Since;
 import dev.skhanal.atrium.system.Handoff;
 import dev.skhanal.atrium.system.HomeWatcher;
 import dev.skhanal.atrium.system.WakeService;
-import dev.skhanal.atrium.ui.AppCard;
-import dev.skhanal.atrium.ui.AppsSection;
-import dev.skhanal.atrium.ui.ClockView;
+import dev.skhanal.atrium.ui.AppTile;
+import dev.skhanal.atrium.ui.Backdrop;
+import dev.skhanal.atrium.ui.Colors;
+import dev.skhanal.atrium.ui.DetailScreen;
 import dev.skhanal.atrium.ui.Dp;
-import dev.skhanal.atrium.ui.EmptyView;
-import dev.skhanal.atrium.ui.Field;
-import dev.skhanal.atrium.ui.FieldCache;
-import dev.skhanal.atrium.ui.FieldView;
-import dev.skhanal.atrium.ui.Glyph;
-import dev.skhanal.atrium.ui.Hero;
-import dev.skhanal.atrium.ui.HomeLayout;
-import dev.skhanal.atrium.ui.Label;
+import dev.skhanal.atrium.ui.FocusGrid;
+import dev.skhanal.atrium.ui.Focusable;
+import dev.skhanal.atrium.ui.HomeScreen;
 import dev.skhanal.atrium.ui.Motion;
-import dev.skhanal.atrium.ui.Palette;
-import dev.skhanal.atrium.ui.Pill;
-import dev.skhanal.atrium.ui.RowScroller;
-import dev.skhanal.atrium.ui.RailItem;
 import dev.skhanal.atrium.ui.Sheet;
-import dev.skhanal.atrium.ui.ToolChip;
+import dev.skhanal.atrium.ui.SheetRow;
 import dev.skhanal.atrium.ui.Type;
 
 /**
  * Atrium's home screen.
  *
- * The screen is one room, lit by whatever the remote is pointing at. Move along
- * the row of apps and the whole screen changes colour, because the colour is
- * read out of that app's own icon and the artwork behind it is generated from
- * it. The hero names what you are pointing at. The rail says where you are. The
- * tools row holds the few things this TV will actually let a launcher open.
+ * Movies and shows from TMDB fill the screen, with your apps in a row under
+ * them. Point at a title and its artwork fills the screen. Select it and the
+ * detail screen says where you can watch it on this TV.
  *
- * Everything shown here is real. The clock is the clock, the apps are the apps
- * that are installed, "last opened" is a time this launcher recorded when it
- * started that app, and the artwork is made here rather than downloaded. There
- * is no watch history, because no third-party launcher on this TV can read one,
- * and no row of films nobody can play.
+ * Focus is moved by this activity with a {@link FocusGrid}, not by Android's
+ * focus search. The one exception is the settings menu, a {@link Sheet}, which
+ * is a plain column and uses normal focus while it is open.
  */
-public final class AtriumActivity extends Activity {
+public final class AtriumActivity extends Activity implements HomeScreen.Actions, DetailScreen.Actions {
 
-    private static final int SECTION_HOME = 0;
-    private static final int SECTION_APPS = 1;
+    private static final int ROW_APPS = 2;
 
     private Prefs prefs;
     private AppRepository repo;
-    private FieldCache fields;
+    private ContentRepository content;
 
-    private FieldView field;
-    private HomeLayout home;
-    private ClockView clock;
-    private LinearLayout rail;
-    private Hero hero;
-    private LinearLayout pills;
-    private Pill openPill;
-    private Pill optionsPill;
-    private Label appsLabel;
-    private Label toolsLabel;
-    private RowScroller appsScroll;
-    private LinearLayout appsRow;
-    private LinearLayout toolsRow;
-    private EmptyView emptyView;
-    private AppsSection appsSection;
+    private Backdrop backdrop;
+    private HomeScreen home;
+    private DetailScreen detail;
     private Sheet sheet;
+    private TextView message;
 
-    private RailItem railHome;
-    private RailItem railApps;
-    private RailItem railSettings;
-
-    private final List<AppEntry> apps = new ArrayList<>();
-    private final List<Tool> tools = new ArrayList<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final List<AppEntry> apps = new ArrayList<>();
+    private List<AppTile> tiles = new ArrayList<>();
+    private Set<String> installed = Collections.emptySet();
 
-    private AppEntry currentApp;
-    private AppCard focusedCard;
-    private View focusBeforeSheet;
-    private int section = SECTION_HOME;
+    private final FocusGrid homeGrid = new FocusGrid();
+    private final FocusGrid detailGrid = new FocusGrid();
+    private List<List<Focusable>> rows = new ArrayList<>();
+    private Focusable current;
+    private boolean detailOpen;
     private boolean arranging;
-    private int lastHour = -1;
-    private Thread warmer;
-
-    /** One destination in the tools row. A null action means one of ours. */
-    private static final class Tool {
-        final String title;
-        final String sub;
-        final int glyph;
-        final int accent;
-        final Handoff.Destination destination;
-        final int ours;     // 0 none, 1 Fire TV home, 2 Atrium preferences
-
-        Tool(String title, String sub, int glyph, int accent,
-             Handoff.Destination destination, int ours) {
-            this.title = title;
-            this.sub = sub;
-            this.glyph = glyph;
-            this.accent = accent;
-            this.destination = destination;
-            this.ours = ours;
-        }
-    }
+    /** True once a held Select has opened the app menu, so its release opens nothing. */
+    private boolean longPressed;
 
     // ---- Lifecycle ------------------------------------------------------
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         Dp.init(this);
         Type.init(this);
         prefs = new Prefs(this);
         Motion.setReduced(prefs.reduceMotion());
         repo = new AppRepository(this, prefs);
-        fields = new FieldCache();
+        content = Content.repository(this);
+        installed = Content.installedPackages(this);
 
         WakeService.ensureRunning(this);
         buildViews();
-        field.setFallback(light().baseBottom);
-        field.wake();
         loadApps();
+        loadContent();
     }
 
     @Override
@@ -158,11 +118,14 @@ public final class AtriumActivity extends Activity {
         pkg.addDataScheme("package");
         registerReceiver(packageReceiver, pkg);
 
-        clock.update();
+        home.top.tick();
         updateNotice();
-        refreshHero();
-        // Coming back from an app must not replay the opening.
-        field.setWoken();
+        // A feed older than six hours is fetched again. A fresh one costs nothing.
+        loadContent();
+        if (current != null && !detailOpen) {
+            // Restarts the hero's timer, which stopped when the app was left.
+            applyFocus();
+        }
     }
 
     @Override
@@ -171,18 +134,10 @@ public final class AtriumActivity extends Activity {
         unregister(timeReceiver);
         unregister(packageReceiver);
         handler.removeCallbacks(reload);
-        if (currentApp != null) {
-            prefs.setLastFocus(currentApp.pkg);
-        }
+        home.pause();
         if (arranging) {
             exitArrangeMode();
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        fields.stop();
     }
 
     private void unregister(BroadcastReceiver r) {
@@ -200,599 +155,251 @@ public final class AtriumActivity extends Activity {
         return f;
     }
 
-    // ---- View tree ------------------------------------------------------
+    // ---- Views ----------------------------------------------------------
 
     private void buildViews() {
         FrameLayout root = new FrameLayout(this);
         root.setClipChildren(false);
+        int match = ViewGroup.LayoutParams.MATCH_PARENT;
 
-        field = new FieldView(this);
-        root.addView(field, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        backdrop = new Backdrop(this);
+        root.addView(backdrop, new FrameLayout.LayoutParams(match, match));
 
-        clock = new ClockView(this);
-        clock.setUse24(prefs.clock24());
-
-        rail = new LinearLayout(this);
-        rail.setOrientation(LinearLayout.VERTICAL);
-        rail.setClipChildren(false);
-        railHome = addRailItem(getString(R.string.rail_home), Glyph.HOME);
-        railApps = addRailItem(getString(R.string.rail_apps), Glyph.APPS);
-        railSettings = addRailItem(getString(R.string.rail_settings), Glyph.SETTINGS);
-        railHome.setCurrent(true);
-
-        hero = new Hero(this);
-
-        pills = new LinearLayout(this);
-        pills.setOrientation(LinearLayout.HORIZONTAL);
-        pills.setClipChildren(false);
-        openPill = new Pill(this);
-        openPill.set(getString(R.string.action_open), true);
-        optionsPill = new Pill(this);
-        optionsPill.set(getString(R.string.action_options), false);
-        for (Pill p : new Pill[]{openPill, optionsPill}) {
-            p.setId(View.generateViewId());
-            p.setOnFocusChangeListener((v, has) -> ((Pill) v).applyFocus(has));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, Dp.of(Pill.HEIGHT_DP));
-            lp.setMarginEnd(Dp.of(14f));
-            pills.addView(p, lp);
-        }
-        openPill.setNextFocusRightId(optionsPill.getId());
-        optionsPill.setNextFocusLeftId(openPill.getId());
-        optionsPill.setNextFocusRightId(optionsPill.getId());
-        openPill.setOnClickListener(v -> openCurrentApp());
-        optionsPill.setOnClickListener(v -> {
-            if (focusedCard != null) {
-                openAppMenu(focusedCard);
+        home = new HomeScreen(this, backdrop, this);
+        home.top.addItem("Home", () -> {
+            if (detailOpen) {
+                close();
             }
-        });
+            focusApps(null);
+        }).setCurrent(true);
+        home.top.addItem("Settings", this::openSettings);
+        home.top.setUse24(prefs.clock24());
+        root.addView(home, new FrameLayout.LayoutParams(match, match));
 
-        appsLabel = new Label(this);
-        appsLabel.setText(getString(R.string.row_apps));
-        toolsLabel = new Label(this);
-        toolsLabel.setText(getString(R.string.row_tools));
+        detail = new DetailScreen(this, this);
+        detail.setVisibility(View.GONE);
+        root.addView(detail, new FrameLayout.LayoutParams(match, match));
 
-        appsRow = new LinearLayout(this);
-        appsRow.setOrientation(LinearLayout.HORIZONTAL);
-        // Each app draws its full border inside its card.
-        appsScroll = new RowScroller(this);
-        appsScroll.addView(appsRow, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        toolsRow = new LinearLayout(this);
-        toolsRow.setOrientation(LinearLayout.HORIZONTAL);
-        toolsRow.setClipChildren(false);
-        toolsRow.setPadding(0, Dp.of(HomeLayout.TOOLS_HEADROOM), 0, 0);
-        // A focused chip grows a little out of the top of the row, into that
-        // padding. Without this the top edge of it is cut off.
-        toolsRow.setClipToPadding(false);
-
-        emptyView = new EmptyView(this);
-        emptyView.setText(getString(R.string.empty_title), getString(R.string.empty_body));
-        emptyView.setVisibility(View.GONE);
-
-        home = new HomeLayout(this);
-        home.attach(clock, rail, hero, pills, appsLabel, appsScroll,
-                toolsLabel, toolsRow, emptyView);
-        root.addView(home, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        appsSection = new AppsSection(this);
-        appsSection.setHeader(getString(R.string.section_all_apps));
-        appsSection.setVisibility(View.GONE);
-        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        sp.leftMargin = Dp.of(HomeLayout.CONTENT_X);
-        sp.topMargin = Dp.of(96f);
-        sp.rightMargin = Dp.of(HomeLayout.RIGHT_MARGIN);
-        sp.bottomMargin = Dp.of(40f);
-        root.addView(appsSection, sp);
+        message = new TextView(this);
+        message.setTypeface(Type.semibold());
+        message.setTextSize(TypedValue.COMPLEX_UNIT_PX, Dp.sp(12f));
+        message.setTextColor(Colors.TEXT);
+        message.setPadding(Dp.of(16f), Dp.of(10f), Dp.of(16f), Dp.of(10f));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xF5141822);
+        bg.setCornerRadius(Dp.f(9f));
+        message.setBackground(bg);
+        message.setVisibility(View.GONE);
+        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        mp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        mp.bottomMargin = Dp.of(30f);
+        root.addView(message, mp);
 
         sheet = new Sheet(this);
         sheet.setVisibility(View.GONE);
-        root.addView(sheet, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(sheet, new FrameLayout.LayoutParams(match, match));
 
         setContentView(root);
-        buildTools();
-        wireAppsSection();
     }
 
-    private RailItem addRailItem(String label, int glyph) {
-        RailItem item = new RailItem(this);
-        item.set(label, glyph);
-        item.setId(View.generateViewId());
-        item.setOnFocusChangeListener((v, has) -> {
-            ((RailItem) v).applyFocus(has);
-        });
-        item.setOnClickListener(this::onRailChosen);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                Dp.of(RailItem.WIDTH_DP), Dp.of(RailItem.HEIGHT_DP));
-        lp.bottomMargin = Dp.of(HomeLayout.RAIL_GAP);
-        rail.addView(item, lp);
-        return item;
+    /** A short line at the bottom of the screen, for when something would not open. */
+    private void say(String text) {
+        message.setText(text);
+        message.setVisibility(View.VISIBLE);
+        handler.removeCallbacks(hideMessage);
+        handler.postDelayed(hideMessage, 3200);
     }
 
-    private void wireAppsSection() {
-        appsSection.setListener(new AppsSection.Listener() {
-            @Override
-            public void onAppFocused(AppCard card) {
-                onCardFocused(card);
-            }
+    private final Runnable hideMessage = () -> message.setVisibility(View.GONE);
 
-            @Override
-            public void onAppChosen(AppCard card) {
-                onCardChosen(card);
-            }
-
-            @Override
-            public void onAppMenu(AppCard card) {
-                openAppMenu(card);
-            }
-        });
-    }
-
-    // ---- The tools row --------------------------------------------------
-
-    /**
-     * Only destinations this TV actually has.
-     *
-     * Each one is checked against the package manager first, so there is never
-     * a chip here that does nothing when it is pressed. There is no Inputs chip
-     * because there cannot be one: both the Fire TV inputs screen and the
-     * tune-to-input intent are held at protection level signature|amazon, which
-     * no installed app can hold. A dead chip would be a lie.
-     */
-    private void buildTools() {
-        tools.clear();
-        toolsRow.removeAllViews();
-
-        for (Handoff.Destination d : Handoff.destinations()) {
-            if (!d.isAvailable(this)) {
-                continue;
-            }
-            boolean network = d.labelRes == R.string.footer_network;
-            tools.add(new Tool(getString(d.labelRes),
-                    getString(network ? R.string.tool_network_sub : R.string.tool_system_sub),
-                    network ? Glyph.WIFI : Glyph.DISPLAY,
-                    network ? 0xFF7FB2FF : 0xFFE3C39C, d, 0));
-        }
-        // When the watcher is running the Amazon home screen becomes hard to
-        // reach, and it is still the only way into the settings Atrium cannot
-        // open. This puts it one press away rather than trapping the user.
-        if (prefs.replaceHome()) {
-            tools.add(new Tool(getString(R.string.footer_firetv),
-                    getString(R.string.tool_firetv_sub), Glyph.TV, 0xFFA98BFF, null, 1));
-        }
-        tools.add(new Tool(getString(R.string.footer_atrium),
-                getString(R.string.tool_atrium_sub), Glyph.ATRIUM, light().key, null, 2));
-
-        int gap = Dp.of(ToolChip.GAP_DP);
-        int n = tools.size();
-        int widthDp = Math.round((HomeLayout.contentWidthDp() - (n - 1) * ToolChip.GAP_DP) / n);
-
-        for (int i = 0; i < n; i++) {
-            final Tool t = tools.get(i);
-            ToolChip chip = new ToolChip(this);
-            chip.setWidthDp(widthDp);
-            chip.set(t.title, t.sub, t.glyph, t.accent,
-                    Field.tile(Field.specFor(t.accent, light(), t.title), 96, 36));
-            chip.setId(View.generateViewId());
-            chip.setOnFocusChangeListener((v, has) -> ((ToolChip) v).applyFocus(has));
-            chip.setOnClickListener(v -> {
-                ((ToolChip) v).playPress();
-                onToolChosen(t);
-            });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    Dp.of(widthDp), Dp.of(ToolChip.HEIGHT_DP));
-            lp.setMarginEnd(i == n - 1 ? 0 : gap);
-            toolsRow.addView(chip, lp);
-        }
-        lockRow(toolsRow, railHome.getId());
-    }
-
-    private void onToolChosen(Tool t) {
-        if (t.ours == 2) {
-            openPreferences();
-            return;
-        }
-        if (t.ours == 1) {
-            openAmazonHome();
-            return;
-        }
-        if (!Handoff.open(this, t.destination)) {
-            hero.show(getString(R.string.row_tools), t.title,
-                    getString(R.string.unavailable), accentOfCurrent());
-        }
-    }
-
-    /**
-     * Send the user to the Amazon home screen on purpose.
-     *
-     * The watcher is told to stand down first, or it would bounce them straight
-     * back here and the chip would look broken.
-     */
-    private void openAmazonHome() {
-        HomeWatcher.standDown(12000L);
-        Handoff.launchPackage(this, "com.amazon.tv.launcher");
-    }
-
-    // ---- The rail -------------------------------------------------------
-
-    private void onRailChosen(View v) {
-        if (v == railSettings) {
-            openPreferences();
-            return;
-        }
-        showSection(v == railApps ? SECTION_APPS : SECTION_HOME, true);
-    }
-
-    /**
-     * Swap the middle of the screen.
-     *
-     * The rail, the clock and the room stay exactly where they are. Only the
-     * content between them changes, which is what makes moving between Home and
-     * Apps feel like one screen rather than two.
-     */
-    private void showSection(int next, boolean moveFocus) {
-        if (section == next && !moveFocus) {
-            return;
-        }
-        section = next;
-        railHome.setCurrent(next == SECTION_HOME);
-        railApps.setCurrent(next == SECTION_APPS);
-
-        boolean appsOpen = next == SECTION_APPS;
-        field.setDimmed(appsOpen);
-        int homeVis = appsOpen ? View.GONE : View.VISIBLE;
-        hero.setVisibility(homeVis);
-        pills.setVisibility(homeVis);
-        appsLabel.setVisibility(homeVis);
-        appsScroll.setVisibility(apps.isEmpty() ? View.GONE : homeVis);
-        toolsLabel.setVisibility(homeVis);
-        toolsRow.setVisibility(homeVis);
-        emptyView.setVisibility(!appsOpen && apps.isEmpty() ? View.VISIBLE : View.GONE);
-
-        if (appsOpen) {
-            appsSection.bind(apps);
-            appsSection.setVisibility(View.VISIBLE);
-            long d = Motion.d(Motion.SECTION);
-            appsSection.setAlpha(d == 0 ? 1f : 0f);
-            appsSection.setTranslationY(d == 0 ? 0f : Dp.f(14f));
-            appsSection.animate().alpha(1f).translationY(0f)
-                    .setDuration(d).setInterpolator(Motion.SWIFT).start();
-            if (moveFocus) {
-                View target = appsSection.cardFor(currentApp == null ? null : currentApp.pkg);
-                if (target != null) {
-                    target.requestFocus();
-                }
-            }
-        } else {
-            appsSection.setVisibility(View.GONE);
-            if (moveFocus) {
-                restoreFocus();
-            }
-        }
-    }
-
-    // ---- Apps -----------------------------------------------------------
+    // ---- Loading --------------------------------------------------------
 
     private void loadApps() {
         if (arranging) {
-            // Rebuilding the row mid-move would throw the move away. The reload
-            // happens when the move ends.
+            // Rebuilding the row mid-move would throw the move away. The
+            // reload happens when the move ends.
             return;
         }
-        repo.load(Dp.of(AppCard.TILE_DP), ready -> {
-            if (appsRow.getChildCount() > 0 && samePackages(ready)) {
-                // Nothing we show has changed. Leaving the row alone keeps the
-                // focus and the scroll position exactly where they were.
-                return;
-            }
+        repo.load(Dp.of(AppTile.ICON_DP), ready -> {
+            String focusedPkg = focusedApp();
+            boolean first = tiles.isEmpty() && current == null;
             apps.clear();
             apps.addAll(ready);
-            buildAppsRow();
-            warmFields();
+            tiles = home.setApps(apps);
+            installed = Content.installedPackages(this);
+            // A streaming app may have come or gone, which changes "On your apps".
+            // When it has not, this costs nothing.
+            loadContent();
+            current = null;
+            refreshRows();
+            if (first || focusedPkg != null) {
+                focusApps(first ? prefs.lastFocus() : focusedPkg);
+            } else {
+                applyFocus();
+            }
+        });
+    }
+
+    private void loadContent() {
+        content.load(installed, feed -> {
+            if (home.setFeed(feed, installed)) {
+                current = null;
+                refreshRows();
+                applyFocus();
+            }
         });
     }
 
-    private boolean samePackages(List<AppEntry> next) {
-        if (next.size() != apps.size()) {
-            return false;
+    // ---- Focus ----------------------------------------------------------
+
+    private FocusGrid grid() {
+        return detailOpen ? detailGrid : homeGrid;
+    }
+
+    /** Re-read the rows of the screen on show, keeping focus where it was. */
+    private void refreshRows() {
+        rows = detailOpen ? detail.focusRows() : home.focusRows();
+        int[] sizes = new int[rows.size()];
+        for (int i = 0; i < sizes.length; i++) {
+            sizes[i] = rows.get(i).size();
         }
-        for (int i = 0; i < next.size(); i++) {
-            if (!next.get(i).pkg.equals(apps.get(i).pkg)) {
-                return false;
+        grid().setRows(sizes);
+    }
+
+    private Focusable focused() {
+        FocusGrid g = grid();
+        if (g.row() < 0 || g.row() >= rows.size() || g.column() >= rows.get(g.row()).size()) {
+            return null;
+        }
+        return rows.get(g.row()).get(g.column());
+    }
+
+    /** Draw focus on whatever the grid points at, and tell the screen. */
+    private void applyFocus() {
+        Focusable f = focused();
+        if (f != current) {
+            if (current != null) {
+                current.setFocused(false);
+            }
+            if (f != null) {
+                f.setFocused(true);
+            }
+            current = f;
+        }
+        if (f != null && !detailOpen) {
+            home.onFocus(grid().row(), grid().column(), f);
+            if (f instanceof AppTile) {
+                prefs.setLastFocus(((AppTile) f).entry().pkg);
             }
         }
-        return true;
     }
 
-    /**
-     * Build the rooms for the apps in the background, before they are needed.
-     *
-     * The first one is the app that will be focused, so the screen is right by
-     * the time anyone looks at it. The rest follow quietly, which is why moving
-     * along the row is instant rather than catching up.
-     */
-    private void warmFields() {
-        if (warmer != null && warmer.isAlive()) {
-            warmer.interrupt();
-        }
-        final List<AppEntry> snapshot = new ArrayList<>(apps);
-        final String first = prefs.lastFocus();
-        warmer = new Thread(() -> {
-            for (AppEntry e : snapshot) {
-                if (e.pkg.equals(first)) {
-                    fields.warm(e.pkg, specFor(e));
-                }
-            }
-            for (AppEntry e : snapshot) {
-                if (Thread.currentThread().isInterrupted()) {
-                    return;
-                }
-                fields.warm(e.pkg, specFor(e));
-            }
-        }, "atrium-warm");
-        warmer.setPriority(Thread.MIN_PRIORITY);
-        warmer.start();
-    }
-
-    private Field.Spec specFor(AppEntry e) {
-        int accent = prefs.accentFromApp() ? e.accent : 0;
-        return Field.specFor(accent, light(), e.pkg);
-    }
-
-    private void buildAppsRow() {
-        appsRow.removeAllViews();
-        focusedCard = null;
-
-        if (apps.isEmpty()) {
-            // There is nothing for the grid to show, so the user is put back on
-            // the home screen rather than left looking at an empty section.
-            if (section == SECTION_APPS) {
-                showSection(SECTION_HOME, false);
-            }
-            appsScroll.setVisibility(View.GONE);
-            emptyView.setVisibility(View.VISIBLE);
-            hero.show(timeWord(), getString(R.string.empty_title),
-                    getString(R.string.hero_empty_body), 0);
-            pills.setVisibility(View.GONE);
-            // Focus has to land somewhere, or the remote does nothing at all.
-            if (toolsRow.getChildCount() > 0) {
-                toolsRow.getChildAt(0).requestFocus();
-            }
-            return;
-        }
-
-        emptyView.setVisibility(View.GONE);
-        appsScroll.setVisibility(section == SECTION_HOME ? View.VISIBLE : View.GONE);
-        pills.setVisibility(section == SECTION_HOME ? View.VISIBLE : View.GONE);
-
-        int gap = Dp.of(AppCard.GAP_DP);
-        for (int i = 0; i < apps.size(); i++) {
-            AppCard card = new AppCard(this);
-            card.bind(apps.get(i));
-            card.setId(View.generateViewId());
-            card.setOnFocusChangeListener((v, has) -> {
-                AppCard c = (AppCard) v;
-                c.applyFocus(has);
-                if (has) {
-                    onCardFocused(c);
-                }
-            });
-            card.setOnClickListener(v -> onCardChosen((AppCard) v));
-            card.setOnLongClickListener(v -> {
-                openAppMenu((AppCard) v);
-                return true;
-            });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    Dp.of(AppCard.WIDTH_DP), Dp.of(AppCard.HEIGHT_DP));
-            lp.setMarginEnd(i == apps.size() - 1 ? 0 : gap);
-            appsRow.addView(card, lp);
-        }
-        lockRow(appsRow, railHome.getId());
-        for (int i = 0; i < appsRow.getChildCount(); i++) {
-            appsRow.getChildAt(i).setNextFocusUpId(openPill.getId());
-        }
-        openPill.setNextFocusLeftId(railHome.getId());
-
-        // An app installed or removed while the grid is open has to show up
-        // there too, not only in the row behind it.
-        if (section == SECTION_APPS) {
-            appsSection.bind(apps);
-            View target = appsSection.cardFor(currentApp == null ? null : currentApp.pkg);
-            if (target != null) {
-                target.requestFocus();
-            }
-            return;
-        }
-
-        restoreFocus();
-    }
-
-    /**
-     * Keep left and right inside one row.
-     *
-     * Without this the focus finder is free to pick any view that happens to
-     * lie in the direction pressed, whatever row it is in. Pressing right on
-     * the last chip used to jump up to an app, and the next Select opened it.
-     * The far left of every row escapes to the rail instead, which is the one
-     * place left should ever go.
-     */
-    private void lockRow(ViewGroup row, int leftEscapeId) {
-        int n = row.getChildCount();
-        for (int i = 0; i < n; i++) {
-            View v = row.getChildAt(i);
-            v.setNextFocusLeftId(i == 0 ? leftEscapeId : row.getChildAt(i - 1).getId());
-            v.setNextFocusRightId(row.getChildAt(i == n - 1 ? n - 1 : i + 1).getId());
-        }
-    }
-
-    /**
-     * Put focus back where the user left it.
-     *
-     * Coming back from an app and finding the row reset to the beginning is one
-     * of the most irritating things a TV home screen can do, so the last
-     * focused app is remembered across launches as well as across restarts.
-     */
-    private void restoreFocus() {
-        String wanted = prefs.lastFocus();
-        View target = null;
-        if (wanted != null) {
-            for (int i = 0; i < appsRow.getChildCount(); i++) {
-                AppCard c = (AppCard) appsRow.getChildAt(i);
-                if (c.entry() != null && wanted.equals(c.entry().pkg)) {
-                    target = c;
-                    break;
-                }
+    /** Focus an app by package, or the first app. Coming back to the row you left matters. */
+    private void focusApps(String pkg) {
+        int index = 0;
+        for (int i = 0; pkg != null && i < tiles.size(); i++) {
+            if (tiles.get(i).entry().pkg.equals(pkg)) {
+                index = i;
             }
         }
-        if (target == null && appsRow.getChildCount() > 0) {
-            target = appsRow.getChildAt(0);
-        }
-        if (target == null && toolsRow.getChildCount() > 0) {
-            target = toolsRow.getChildAt(0);
-        }
-        if (target != null) {
-            target.requestFocus();
-        }
+        homeGrid.focus(ROW_APPS, index);
+        applyFocus();
     }
 
-    private void onCardFocused(AppCard card) {
-        focusedCard = card;
-        AppEntry e = card.entry();
-        if (e == null) {
-            return;
-        }
-        currentApp = e;
-        aimVerticalMovesAt(card);
-        if (arranging) {
-            hero.show(getString(R.string.row_apps), e.label,
-                    getString(R.string.arrange_hint), e.accent);
-        } else {
-            refreshHero();
-        }
-        showFieldFor(e);
-        railHome.setAccent(Palette.asRim(accentOfCurrent()));
-        railApps.setAccent(Palette.asRim(accentOfCurrent()));
-        railSettings.setAccent(Palette.asRim(accentOfCurrent()));
+    private String focusedApp() {
+        return current instanceof AppTile ? ((AppTile) current).entry().pkg : null;
     }
 
-    /**
-     * Point every way back into the row at the tile the user is actually on.
-     *
-     * Leaving the row upwards and coming back down to the first tile again is
-     * the single most irritating thing a TV layout does. The nearest view in
-     * the direction pressed is not what a person means. They mean "back to
-     * where I was".
-     */
-    private void aimVerticalMovesAt(AppCard card) {
-        if (card.getParent() != appsRow) {
-            return;
-        }
-        openPill.setNextFocusDownId(card.getId());
-        optionsPill.setNextFocusDownId(card.getId());
-        for (int i = 0; i < toolsRow.getChildCount(); i++) {
-            toolsRow.getChildAt(i).setNextFocusUpId(card.getId());
-        }
-    }
+    // ---- Home screen actions --------------------------------------------
 
-    /**
-     * Put this app's room on the screen.
-     *
-     * If it has already been generated this is immediate. If it has not, the
-     * room on screen stays until the new one is ready, which is why fast
-     * scrubbing along the row never flashes or stutters.
-     */
-    private void showFieldFor(final AppEntry e) {
-        Bitmap have = fields.request(e.pkg, specFor(e), (key, bmp) -> {
-            if (currentApp != null && currentApp.pkg.equals(key)) {
-                field.show(bmp, true);
-            }
-        });
-        if (have != null) {
-            field.show(have, true);
-        }
-    }
-
-    private void refreshHero() {
-        if (currentApp == null || apps.isEmpty()) {
-            return;
-        }
-        hero.show(timeWord(), currentApp.label,
-                Since.describe(this, currentApp.lastOpened, System.currentTimeMillis()),
-                accentOfCurrent());
-    }
-
-    private int accentOfCurrent() {
-        if (currentApp == null) {
-            return light().key;
-        }
-        return prefs.accentFromApp() && currentApp.accent != 0 ? currentApp.accent : light().key;
-    }
-
-    /** The word above the name, which is just what time it is. */
-    private String timeWord() {
-        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        if (h >= 5 && h < 12) {
-            return getString(R.string.hero_morning);
-        }
-        if (h >= 12 && h < 17) {
-            return getString(R.string.hero_afternoon);
-        }
-        if (h >= 17 && h < 21) {
-            return getString(R.string.hero_evening);
-        }
-        return getString(R.string.hero_night);
-    }
-
-    private void onCardChosen(AppCard card) {
+    @Override
+    public void openApp(AppEntry e) {
         if (arranging) {
             exitArrangeMode();
             return;
         }
-        card.playPress();
-        open(card.entry());
-    }
-
-    private void openCurrentApp() {
-        openPill.animate().cancel();
-        open(currentApp);
-    }
-
-    private void open(AppEntry e) {
-        if (e == null) {
-            return;
-        }
         prefs.setLastFocus(e.pkg);
-        long now = System.currentTimeMillis();
         if (Handoff.launch(this, e.component)) {
-            // Recorded here, by us, when we started it. This is the only
-            // honest "recent" a launcher on this TV has.
-            prefs.noteOpened(e.pkg, now);
-            e.lastOpened = now;
+            // Recorded by this launcher when it starts the app. It is not watch history.
+            prefs.noteOpened(e.pkg, System.currentTimeMillis());
             return;
         }
-        hero.show(timeWord(), e.label, getString(R.string.cannot_open), e.accent);
-        handler.postDelayed(() -> refreshHero(), 2400);
+        say(e.label + " would not open");
     }
 
-    // ---- The app menu ---------------------------------------------------
+    @Override
+    public void openTitle(Title t) {
+        detailOpen = true;
+        home.pause();
+        home.setVisibility(View.GONE);
+        detail.show(t, installed);
+        detail.setVisibility(View.VISIBLE);
+        backdrop.setDim(0.4f);
+        backdrop.showArtwork(t.backdrop);
+        current = null;
+        refreshRows();
+        detailGrid.focus(0, 0);
+        applyFocus();
+    }
 
-    private void openAppMenu(final AppCard card) {
-        final AppEntry e = card.entry();
-        if (e == null || arranging) {
+    @Override
+    public void playTrailer(Title t) {
+        String uri = t.details == null ? null : Links.trailer(t.details.trailer);
+        if (uri == null) {
+            say("TMDB has no trailer for this title");
             return;
         }
-        List<String> options = new ArrayList<>();
-        options.add(getString(R.string.menu_pin));
-        options.add(getString(R.string.menu_rearrange));
-        options.add(getString(R.string.menu_hide));
-        options.add(getString(R.string.menu_app_info));
+        if (!Handoff.openUri(this, uri, Links.YOUTUBE_PACKAGE)) {
+            say("YouTube would not open");
+        }
+    }
 
-        focusBeforeSheet = getCurrentFocus();
+    // ---- Detail screen actions ------------------------------------------
+
+    @Override
+    public void watch(WatchOption w) {
+        String pkg = w.app.installedPackage(installed);
+        if (pkg != null) {
+            // TMDB does not give these apps' own title IDs, so the app opens
+            // at its home screen rather than at the title.
+            if (!Handoff.launchPackage(this, pkg)) {
+                say(w.app.name + " would not open");
+            }
+            return;
+        }
+        if (!Handoff.openUri(this, Links.appstorePage(w.app.appstorePackage()), null)) {
+            say("The Appstore would not open");
+        }
+    }
+
+    @Override
+    public void close() {
+        if (!detailOpen) {
+            return;
+        }
+        detailOpen = false;
+        detail.setVisibility(View.GONE);
+        home.setVisibility(View.VISIBLE);
+        backdrop.setDim(0f);
+        home.restoreBackdrop();
+        if (current != null) {
+            current.setFocused(false);
+        }
+        current = null;
+        refreshRows();
+        applyFocus();
+    }
+
+    // ---- App menu and moving apps ---------------------------------------
+
+    private void openAppMenu(AppTile tile) {
+        AppEntry e = tile.entry();
+        List<String> options = new ArrayList<>();
+        options.add("Put first in the row");
+        options.add("Move this app");
+        options.add("Hide from home");
+        options.add("App info");
         sheet.configure(e.label, options, new Sheet.Callback() {
             @Override
             public void onSheetChoice(int index) {
@@ -804,10 +411,11 @@ public final class AtriumActivity extends Activity {
                         loadApps();
                         break;
                     case 1:
-                        enterArrangeMode(card);
+                        enterArrangeMode();
                         break;
                     case 2:
-                        hideApp(e);
+                        repo.hide(e.pkg);
+                        loadApps();
                         break;
                     default:
                         Handoff.openAppInfo(AtriumActivity.this, e.pkg);
@@ -817,270 +425,162 @@ public final class AtriumActivity extends Activity {
 
             @Override
             public void onSheetClosed() {
-                returnFocus();
             }
         });
         sheet.open(0);
     }
 
-    /** Give focus back to whatever had it before the menu opened. */
-    private void returnFocus() {
-        handler.post(() -> {
-            // Choosing "hidden apps" closes one menu and opens another in the
-            // same breath. Without this check the closing menu would pull focus
-            // out of the one that just opened.
-            if (sheet.isOpen()) {
-                return;
-            }
-            if (focusBeforeSheet != null && focusBeforeSheet.getParent() != null
-                    && focusBeforeSheet.isFocusable()) {
-                focusBeforeSheet.requestFocus();
-                focusBeforeSheet = null;
-                return;
-            }
-            focusBeforeSheet = null;
-            if (focusedCard != null && focusedCard.getParent() != null) {
-                focusedCard.requestFocus();
-            } else {
-                restoreFocus();
-            }
-        });
-    }
-
-    private void hideApp(AppEntry e) {
-        repo.hide(e.pkg);
-        prefs.setLastFocus(null);
-        loadApps();
-    }
-
-    // ---- Rearranging ----------------------------------------------------
-
-    private void enterArrangeMode(AppCard card) {
-        if (section == SECTION_APPS) {
-            showSection(SECTION_HOME, false);
+    private void enterArrangeMode() {
+        if (!(current instanceof AppTile)) {
+            focusApps(prefs.lastFocus());
         }
-        arranging = true;
-        AppCard target = cardInRowFor(card);
-        if (target == null) {
-            arranging = false;
+        if (!(current instanceof AppTile)) {
             return;
         }
-        target.setArrangeMode(true);
-        target.requestFocus();
-        focusedCard = target;
-        hero.show(getString(R.string.row_apps), target.entry().label,
-                getString(R.string.arrange_hint), target.entry().accent);
-    }
-
-    private AppCard cardInRowFor(AppCard card) {
-        if (card != null && card.getParent() == appsRow) {
-            return card;
-        }
-        String pkg = card == null || card.entry() == null ? null : card.entry().pkg;
-        for (int i = 0; i < appsRow.getChildCount(); i++) {
-            AppCard c = (AppCard) appsRow.getChildAt(i);
-            if (c.entry() != null && c.entry().pkg.equals(pkg)) {
-                return c;
-            }
-        }
-        return appsRow.getChildCount() > 0 ? (AppCard) appsRow.getChildAt(0) : null;
+        arranging = true;
+        ((AppTile) current).setMoving(true);
+        say("Left and right to move  ·  Select when done");
     }
 
     private void exitArrangeMode() {
         arranging = false;
-        for (int i = 0; i < appsRow.getChildCount(); i++) {
-            ((AppCard) appsRow.getChildAt(i)).setArrangeMode(false);
+        for (AppTile t : tiles) {
+            t.setMoving(false);
         }
         repo.saveOrder(apps);
-        refreshHero();
+        handler.removeCallbacks(hideMessage);
+        message.setVisibility(View.GONE);
     }
 
-    /** Swap the focused app with its neighbour and keep focus on it. */
-    private boolean moveFocused(int delta) {
-        if (focusedCard == null) {
-            return false;
-        }
-        int from = appsRow.indexOfChild(focusedCard);
+    /** Swap the app being moved with its neighbour, and keep focus on it. */
+    private void moveApp(int delta) {
+        int from = homeGrid.column();
         int to = from + delta;
-        if (from < 0 || to < 0 || to >= appsRow.getChildCount()) {
-            return true;    // consumed: do not let focus walk away mid-move
+        if (homeGrid.row() != ROW_APPS || to < 0 || to >= tiles.size()) {
+            return;
         }
         Collections.swap(apps, from, to);
-
-        AppCard card = focusedCard;
-        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) card.getLayoutParams();
-        appsRow.removeView(card);
-        appsRow.addView(card, to, lp);
-        fixRowMargins();
-        lockRow(appsRow, railHome.getId());
-        for (int i = 0; i < appsRow.getChildCount(); i++) {
-            appsRow.getChildAt(i).setNextFocusUpId(openPill.getId());
-        }
-        card.requestFocus();
-        return true;
+        Collections.swap(tiles, from, to);
+        home.appsRow().swap(from, to);
+        refreshRows();
+        homeGrid.focus(ROW_APPS, to);
+        applyFocus();
     }
 
-    /** Only the last tile has no trailing gap, so margins are redone after a move. */
-    private void fixRowMargins() {
-        int gap = Dp.of(AppCard.GAP_DP);
-        int n = appsRow.getChildCount();
-        for (int i = 0; i < n; i++) {
-            View v = appsRow.getChildAt(i);
-            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams();
-            lp.setMarginEnd(i == n - 1 ? 0 : gap);
-            v.setLayoutParams(lp);
+    // ---- Settings -------------------------------------------------------
+
+    /** One line in the settings menu, with the value it shows on the right. */
+    private static final class Setting {
+        final String label;
+        final boolean closes;
+        /** The current value, or null for a line with none. */
+        final Supplier<String> value;
+        /** Null for a line that is only text. */
+        final Runnable action;
+
+        Setting(String label, boolean closes, Supplier<String> value, Runnable action) {
+            this.label = label;
+            this.closes = closes;
+            this.value = value;
+            this.action = action;
         }
     }
 
-    // ---- Preferences ----------------------------------------------------
+    private static String onOff(boolean on) {
+        return on ? "On" : "Off";
+    }
 
-    private void openPreferences() {
-        // Order matters. Rearranging and hiding apps are what people come
-        // looking for, so they are at the top. Holding Select on an app does
-        // the same thing, but nobody finds that on their own.
-        final List<String> options = new ArrayList<>();
-        options.add(getString(R.string.prefs_rearrange));
-        options.add(getString(R.string.prefs_hidden));
-        options.add(getString(R.string.prefs_light));
-        options.add(getString(R.string.prefs_accent));
-        options.add(getString(R.string.prefs_motion));
-        options.add(getString(R.string.prefs_clock));
-        options.add(getString(R.string.prefs_replace_home));
+    private void openSettings() {
+        List<Setting> items = new ArrayList<>();
+        items.add(new Setting("Rearrange apps", true, () -> String.valueOf(apps.size()),
+                this::enterArrangeMode));
+        items.add(new Setting("Hidden apps", true, () -> {
+            int n = prefs.hidden().size();
+            return n == 0 ? "None" : String.valueOf(n);
+        }, () -> handler.post(this::openHiddenApps)));
+        for (Handoff.Destination d : Handoff.destinations()) {
+            if (d.isAvailable(this)) {
+                items.add(new Setting(getString(d.labelRes), true, null, () -> Handoff.open(this, d)));
+            }
+        }
+        items.add(new Setting("Reduce motion", false, () -> onOff(prefs.reduceMotion()), () -> {
+            prefs.setReduceMotion(!prefs.reduceMotion());
+            Motion.setReduced(prefs.reduceMotion());
+        }));
+        items.add(new Setting("24-hour clock", false, () -> onOff(prefs.clock24()), () -> {
+            prefs.setClock24(!prefs.clock24());
+            home.top.setUse24(prefs.clock24());
+        }));
+        items.add(new Setting("Open Atrium on Home and wake", false, () -> onOff(prefs.replaceHome()), () -> {
+            boolean on = !prefs.replaceHome();
+            prefs.setReplaceHome(on);
+            if (on) {
+                WakeService.ensureRunning(this);
+            } else {
+                WakeService.stop(this);
+            }
+        }));
+        if (prefs.replaceHome()) {
+            // With the watcher on, the Amazon home screen is hard to reach, and
+            // it is the only way into the settings Atrium cannot open.
+            items.add(new Setting("Fire TV home screen", true, null, () -> {
+                HomeWatcher.standDown(12000L);
+                Handoff.launchPackage(this, "com.amazon.tv.launcher");
+            }));
+        }
+        // The credit TMDB asks for. It is a line, not a button.
+        items.add(new Setting("Movie data and artwork from TMDB", false, null, null));
 
-        focusBeforeSheet = getCurrentFocus();
-        sheet.configure(getString(R.string.prefs_title), options, new Sheet.Callback() {
+        List<String> labels = new ArrayList<>();
+        for (Setting s : items) {
+            labels.add(s.label);
+        }
+        sheet.configure("Settings", labels, new Sheet.Callback() {
             @Override
             public void onSheetChoice(int index) {
-                switch (index) {
-                    case 0:
-                        sheet.close();
-                        startRearranging();
-                        return;
-                    case 1:
-                        sheet.close();
-                        openHiddenApps();
-                        return;
-                    case 2:
-                        cycleLight();
-                        break;
-                    case 3:
-                        prefs.setAccentFromApp(!prefs.accentFromApp());
-                        relight();
-                        break;
-                    case 4:
-                        prefs.setReduceMotion(!prefs.reduceMotion());
-                        Motion.setReduced(prefs.reduceMotion());
-                        break;
-                    case 5:
-                        prefs.setClock24(!prefs.clock24());
-                        clock.setUse24(prefs.clock24());
-                        break;
-                    default:
-                        boolean on = !prefs.replaceHome();
-                        prefs.setReplaceHome(on);
-                        if (on) {
-                            WakeService.ensureRunning(AtriumActivity.this);
-                        } else {
-                            WakeService.stop(AtriumActivity.this);
-                        }
-                        buildTools();
-                        break;
+                Setting s = items.get(index);
+                if (s.action == null) {
+                    return;
                 }
-                updatePreferenceValues();
+                if (s.closes) {
+                    sheet.close();
+                }
+                s.action.run();
+                showSettingValues(items);
             }
 
             @Override
             public void onSheetClosed() {
-                returnFocus();
             }
         });
-        updatePreferenceValues();
+        showSettingValues(items);
+        sheet.rowAt(items.size() - 1).setRowEnabled(false);
         sheet.open(0);
     }
 
-    private void startRearranging() {
-        handler.post(() -> {
-            AppCard target = cardInRowFor(focusedCard);
-            if (target == null) {
-                return;
+    /** Each setting shows its current value on the right, so nothing is hidden. */
+    private void showSettingValues(List<Setting> items) {
+        for (int i = 0; i < items.size(); i++) {
+            SheetRow row = sheet.rowAt(i);
+            Supplier<String> value = items.get(i).value;
+            if (row != null && value != null) {
+                row.setValue(value.get());
             }
-            enterArrangeMode(target);
-        });
-    }
-
-    /** Each preference row shows its current setting, so nothing is hidden. */
-    private void updatePreferenceValues() {
-        String[] lightNames = {
-                getString(R.string.prefs_light_auto),
-                getString(R.string.prefs_light_warm),
-                getString(R.string.prefs_light_cool),
-                getString(R.string.prefs_light_mono)};
-        setRowValue(0, String.valueOf(apps.size()));
-        int hidden = prefs.hidden().size();
-        setRowValue(1, hidden == 0 ? getString(R.string.prefs_none_hidden) : String.valueOf(hidden));
-        setRowValue(2, lightNames[Math.max(0, Math.min(3, prefs.light()))]);
-        setRowValue(3, onOff(prefs.accentFromApp()));
-        setRowValue(4, onOff(prefs.reduceMotion()));
-        setRowValue(5, prefs.clock24() ? "24" : "12");
-        setRowValue(6, onOff(prefs.replaceHome()));
-    }
-
-    private void setRowValue(int index, String value) {
-        dev.skhanal.atrium.ui.SheetRow row = sheet.rowAt(index);
-        if (row != null) {
-            row.setValue(value);
         }
-    }
-
-    private String onOff(boolean on) {
-        return getString(on ? R.string.prefs_on : R.string.prefs_off);
-    }
-
-    private void cycleLight() {
-        prefs.setLight((prefs.light() + 1) % 4);
-        relight();
-    }
-
-    private Palette.Light light() {
-        int hour = clock == null ? Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-                : clock.hourOfDay();
-        lastHour = hour;
-        return Palette.lightFor(prefs.light(), hour);
-    }
-
-    /**
-     * Rebuild every room, because the light they were generated under changed.
-     *
-     * The one on screen stays until its replacement is ready, so changing the
-     * setting never shows a blank screen.
-     */
-    private void relight() {
-        fields.clear();
-        field.setFallback(light().baseBottom);
-        if (currentApp != null) {
-            showFieldFor(currentApp);
-        }
-        buildTools();
-        warmFields();
     }
 
     private void openHiddenApps() {
-        final List<AppEntry> hidden = repo.hiddenApps();
-        final List<String> options = new ArrayList<>();
+        List<AppEntry> hidden = repo.hiddenApps();
+        List<String> options = new ArrayList<>();
         for (AppEntry e : hidden) {
             options.add(e.label);
         }
-        if (!hidden.isEmpty()) {
-            options.add(getString(R.string.prefs_restore));
-        } else {
-            options.add(getString(R.string.prefs_none_hidden));
-        }
-
-        sheet.configure(getString(R.string.prefs_hidden), options, new Sheet.Callback() {
+        options.add(hidden.isEmpty() ? "Nothing is hidden" : "Show all apps again");
+        sheet.configure("Hidden apps", options, new Sheet.Callback() {
             @Override
             public void onSheetChoice(int index) {
+                sheet.close();
                 if (hidden.isEmpty()) {
-                    sheet.close();
                     return;
                 }
                 if (index < hidden.size()) {
@@ -1088,23 +588,17 @@ public final class AtriumActivity extends Activity {
                 } else {
                     repo.unhideAll();
                 }
-                sheet.close();
                 loadApps();
             }
 
             @Override
             public void onSheetClosed() {
-                returnFocus();
             }
         });
-        // Two different system apps on this TV are both called "Downloads", so
-        // the name alone does not say which row is which. The package name goes
-        // in the column on the right, which was empty here anyway.
+        // Two system apps on this TV are both called "Downloads", so the
+        // package name goes on the right to tell them apart.
         for (int i = 0; i < hidden.size(); i++) {
-            dev.skhanal.atrium.ui.SheetRow row = sheet.rowAt(i);
-            if (row != null) {
-                row.setValue(hidden.get(i).pkg);
-            }
+            sheet.rowAt(i).setValue(hidden.get(i).pkg);
         }
         sheet.open(0);
     }
@@ -1114,26 +608,22 @@ public final class AtriumActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (sheet.isOpen()) {
-            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                if (event.getAction() == KeyEvent.ACTION_UP) {
-                    sheet.close();
-                }
-                return true;
-            }
             return super.dispatchKeyEvent(event);
         }
+        boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
+        int code = event.getKeyCode();
 
-        // While an app is being moved these keys are consumed whole, both the
-        // press and the release. Consuming only the press would let the release
-        // of the Select that ends the move reach the app underneath and open
-        // it, which is the opposite of what the user asked for.
+        // While an app is being moved, these keys are consumed whole, press
+        // and release. Consuming only the press would let the release of the
+        // Select that ends the move open the app underneath.
         if (arranging) {
-            boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
-            switch (event.getKeyCode()) {
+            switch (code) {
                 case KeyEvent.KEYCODE_DPAD_LEFT:
-                    return !down || moveFocused(-1);
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    return !down || moveFocused(1);
+                    if (down) {
+                        moveApp(code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+                    }
+                    return true;
                 case KeyEvent.KEYCODE_BACK:
                 case KeyEvent.KEYCODE_DPAD_CENTER:
                 case KeyEvent.KEYCODE_ENTER:
@@ -1143,59 +633,66 @@ public final class AtriumActivity extends Activity {
                     return true;
                 case KeyEvent.KEYCODE_DPAD_UP:
                 case KeyEvent.KEYCODE_DPAD_DOWN:
-                    // Leaving the row half way through a move would strand it.
                     return true;
                 default:
                     break;
             }
         }
 
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            View current = getCurrentFocus();
-
-            // Right out of the rail goes back to whatever was focused in the
-            // content, not to whatever happens to be nearest on screen.
-            if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT
-                    && current instanceof RailItem) {
-                View target = contentFocusTarget();
-                if (target != null) {
-                    target.requestFocus();
-                    return true;
+        switch (code) {
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                if (down && grid().move(
+                        code == KeyEvent.KEYCODE_DPAD_UP ? -1 : code == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : 0,
+                        code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 0)) {
+                    applyFocus();
                 }
-            }
-
-            // The Menu button is a shortcut to the app menu, but only when an
-            // app is what is actually focused.
-            if (event.getKeyCode() == KeyEvent.KEYCODE_MENU && current instanceof AppCard) {
-                openAppMenu((AppCard) current);
                 return true;
-            }
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                return onSelect(event);
+            case KeyEvent.KEYCODE_MENU:
+                // On release. Opened on the press, the release would reach the
+                // menu that just opened, and a Menu release closes a menu.
+                if (!down && current instanceof AppTile) {
+                    openAppMenu((AppTile) current);
+                }
+                return true;
+            case KeyEvent.KEYCODE_BACK:
+                // Back closes the detail screen. On the home screen it has
+                // nowhere to go, so it is swallowed rather than dropping the
+                // user onto a black screen.
+                if (!down && detailOpen) {
+                    close();
+                }
+                return true;
+            default:
+                return super.dispatchKeyEvent(event);
         }
+    }
 
-        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-            // Back leaves the Apps section. On the home screen it has nowhere
-            // to go, so it is swallowed rather than dropping the user onto a
-            // black screen.
-            if (event.getAction() == KeyEvent.ACTION_UP && section != SECTION_HOME) {
-                showSection(SECTION_HOME, true);
+    /**
+     * Select acts on release. Held on an app, it opens the app menu instead,
+     * and its release then does nothing.
+     */
+    private boolean onSelect(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (event.getRepeatCount() == 0) {
+                longPressed = false;
+            } else if (!longPressed && current instanceof AppTile && (event.isLongPress()
+                    || event.getEventTime() - event.getDownTime() >= ViewConfiguration.getLongPressTimeout())) {
+                longPressed = true;
+                openAppMenu((AppTile) current);
             }
             return true;
         }
-
-        return super.dispatchKeyEvent(event);
-    }
-
-    private View contentFocusTarget() {
-        if (section == SECTION_APPS) {
-            return appsSection.cardFor(currentApp == null ? null : currentApp.pkg);
+        if (!longPressed && !event.isCanceled() && current != null) {
+            current.activate();
         }
-        if (focusedCard != null && focusedCard.getParent() == appsRow) {
-            return focusedCard;
-        }
-        if (appsRow.getChildCount() > 0) {
-            return appsRow.getChildAt(0);
-        }
-        return toolsRow.getChildCount() > 0 ? toolsRow.getChildAt(0) : null;
+        longPressed = false;
+        return true;
     }
 
     @Override
@@ -1206,47 +703,34 @@ public final class AtriumActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        // Pressing Home while already here should settle the screen, not
-        // rebuild it.
+        // Pressing Home while already here settles the screen, it does not rebuild it.
         if (arranging) {
             exitArrangeMode();
         }
         if (sheet.isOpen()) {
             sheet.close();
         }
-        if (section != SECTION_HOME) {
-            showSection(SECTION_HOME, true);
-        } else {
-            returnFocus();
-        }
+        close();
+        focusApps(focusedApp() != null ? focusedApp() : prefs.lastFocus());
     }
 
     // ---- Receivers ------------------------------------------------------
 
     private void updateNotice() {
-        home.setNotice(Handoff.isOnline(this) ? null : getString(R.string.offline));
+        home.top.setNotice(Handoff.isOnline(this) ? null : "Offline");
     }
 
     private final BroadcastReceiver timeReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            clock.update();
-            clock.invalidate();
+            home.top.tick();
             updateNotice();
-            // The room follows the hour, so at the turn of the hour the light
-            // may need to change with it.
-            int hour = clock.hourOfDay();
-            if (hour != lastHour && prefs.light() == Palette.LIGHT_AUTO) {
-                relight();
-            }
-            lastHour = hour;
         }
     };
 
     /**
      * Installing or updating one app fires several broadcasts in a row. They
-     * are collapsed into a single reload so the row is not rebuilt four times,
-     * which would throw away the user's focus each time.
+     * are collapsed into one reload, so focus is not thrown away four times.
      */
     private final Runnable reload = this::loadApps;
 

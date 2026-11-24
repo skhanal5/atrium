@@ -16,6 +16,17 @@ android {
         targetSdk 29
         versionCode 1
         versionName '1.0'
+
+        // The TMDB read access token comes from ~/.gradle/gradle.properties,
+        // so it never enters git. A build without it still works: the home
+        // screen shows apps only. Anyone who copies the APK can read the token.
+        // That is accepted for a personal TV.
+        def tmdbToken = (project.findProperty('TMDB_READ_TOKEN') ?: '').toString().trim()
+        buildConfigField 'String', 'TMDB_READ_TOKEN', "\"${tmdbToken}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {
@@ -30,7 +41,12 @@ android {
     }
 }
 
-// No third-party dependencies. Everything here is framework code, which keeps
-// the APK small and the cold start fast on a 2 GB device.
+// No third-party dependencies in the app. Everything it runs is framework
+// code, which keeps the APK small and the cold start fast on a 2 GB device.
+// The test libraries below are not packaged into the APK.
 dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    // Android's org.json is a stub on the JVM. This is the real library, so
+    // the TMDB parser tests run on a Mac without a device.
+    testImplementation 'org.json:json:20231013'
 }

@@ -36,14 +36,17 @@ printf '%s\n' "am force-stop $PKG" "sleep 1" "am start -n $PKG/.AtriumActivity" 
   | "$PY" -I "$TV" --batch > /dev/null
 
 echo "--- shots ---"
-shoot atrium-01-home            ""        4
-shoot atrium-02-home-third-app  "22 22"   2
-shoot atrium-03-app-menu        "82"      2
-shoot atrium-04-tools-row       "4 20"    2
-shoot atrium-05-apps-grid       "19 21 20 23" 3
-shoot atrium-06-preferences     "21 20 23"    3
+# Focus starts on the first app. Rows below it: Trending, On your apps, Popular shows.
+shoot atrium-01-home              ""          6
+shoot atrium-02-trending          "20"        3
+shoot atrium-03-on-your-apps      "20"        3
+shoot atrium-04-popular-shows     "20"        3
+shoot atrium-05-detail            "19 23"     4
+shoot atrium-06-where-to-watch    "20"        2
+shoot atrium-07-app-menu          "4 19 19 82" 3
+shoot atrium-08-settings          "4 19 19 22 23" 3
 
 echo "--- back to the home screen ---"
-printf '%s\n' "input keyevent 4" "input keyevent 4" "rm -f /sdcard/shot.png" \
+printf '%s\n' "input keyevent 4" "input keyevent 20" "input keyevent 20" "rm -f /sdcard/shot.png" \
   | "$PY" -I "$TV" --batch > /dev/null
 echo "done. shots are in $OUT"

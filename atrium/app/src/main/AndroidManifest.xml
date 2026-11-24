@@ -9,6 +9,10 @@
          install time, and is used for one thing: to show a quiet warning when the
          TV is offline. Nothing is sent anywhere. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Fetch movie and show rows, artwork and where-to-watch data from TMDB.
+         Only api.themoviedb.org and image.tmdb.org are contacted. Nothing
+         about the TV or the person using it is sent. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Read Home presses from the system log. Granted explicitly over ADB. -->
     <uses-permission android:name="android.permission.READ_LOGS"
         tools:ignore="ProtectedPermissions" />

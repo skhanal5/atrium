@@ -4,13 +4,13 @@ import android.view.animation.Interpolator;
 import android.view.animation.PathInterpolator;
 
 /**
- * The timing side of the design system.
+ * The timing side of the design.
  *
  * Two rules hold the motion together:
  *
- * 1. Focus is fast, the room is slow. The thing the remote controls reacts at
- *    once. The light and the background drift behind it. That difference is
- *    what makes the room feel large and the input feel immediate.
+ * 1. Focus is fast, the picture is slow. What the remote controls reacts at
+ *    once. The artwork dissolves behind it. That difference makes the screen
+ *    feel calm and the input feel immediate.
  * 2. Nothing ever makes the user wait. Every animation is decorative. Input is
  *    accepted during all of them.
  */
@@ -23,25 +23,23 @@ public final class Motion {
     public static final Interpolator SWIFT = new PathInterpolator(0.2f, 0f, 0f, 1f);
     /** The everyday curve, for fades and small moves. */
     public static final Interpolator SMOOTH = new PathInterpolator(0.4f, 0f, 0.2f, 1f);
-    /** Slow and even, for the light and the background. */
+    /** Slow and even, for the artwork. */
     public static final Interpolator GENTLE = new PathInterpolator(0.33f, 0f, 0.1f, 1f);
 
     public static final long FOCUS = 220;
-    public static final long LABEL = 180;
-    public static final long LIGHT = 420;
-    public static final long PRESS_IN = 90;
-    public static final long PRESS_OUT = 160;
-    public static final long WAKE = 700;
     public static final long SHEET = 200;
-    /** The room dissolving into the next app's room. */
-    public static final long FIELD = 420;
-    /** Hero type leaving, then the next one arriving behind it. */
+    /** Hero text leaving, then the next title arriving behind it. */
     public static final long HERO_OUT = 130;
     public static final long HERO_IN = 260;
-    /** The rail opening out to show its labels. */
-    public static final long RAIL = 190;
-    /** A whole section being swapped for another. */
+    /** A row sliding sideways, or the rows scrolling up and down. */
     public static final long SECTION = 240;
+    /** One picture dissolving into the next behind the screen. */
+    public static final long BACKDROP = 600;
+    /**
+     * How long the hero shows one trending title before the next. This is a
+     * pace, not an animation, so reduce motion does not change it.
+     */
+    public static final long HERO_ROTATE = 8000;
 
     /**
      * Set to 0 when the user turns on "reduce motion". Durations are multiplied

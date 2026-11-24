@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window background matches the darkest point of the light field so a
+         cold start never flashes a different colour before the first frame. -->
+    <style name="Theme.Atrium" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/base_deep</item>
+        <item name="android:colorBackground">@color/base_deep</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowContentTransitions">false</item>
+    </style>
+</resources>

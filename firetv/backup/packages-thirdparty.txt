@@ -1,0 +1,4 @@
+package:com.amazon.firetv.youtube
+package:com.peacock.peacockfiretv
+package:io.github.jqssun.airplay
+package:com.esaba.downloader

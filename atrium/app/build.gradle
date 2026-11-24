@@ -1,0 +1,36 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'dev.skhanal.atrium'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'dev.skhanal.atrium'
+        // Fire OS 6 on the Toshiba AFTKMST12 is Android 7.1.2 (API 25).
+        minSdk 25
+        // Kept at 29 so the launcher is not subject to the API 30 package
+        // visibility rules, which would hide most installed apps from the
+        // app query without a long <queries> list.
+        targetSdk 29
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// No third-party dependencies. Everything here is framework code, which keeps
+// the APK small and the cold start fast on a 2 GB device.
+dependencies {
+}

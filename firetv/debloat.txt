@@ -1,0 +1,96 @@
+# Debloat list for Toshiba AFTKMST12 (keira), Fire OS 6.7.1.1, Android 7.1.2 / API 25
+# Applied with: pm disable-user --user 0 <pkg>   (reversible, nothing is uninstalled)
+# Undo everything with: firetv/restore.sh
+
+# ---------------------------------------------------------------
+# 1. Advertising and sponsored content
+# ---------------------------------------------------------------
+com.amazon.ftvads.deeplinking        # [PROTECTED, cannot disable]  serves the Fire TV banner ads
+com.amazon.hybridadidservice         # advertising ID used to target them
+com.amazon.sneakpeek                 # "Sneak Peek" sponsored screensaver promos
+com.amazon.uxnotification            # pop-up promos for new Amazon features
+com.amazon.tv.website_launcher       # opens Amazon promo web pages on the TV
+
+# ---------------------------------------------------------------
+# 2. Telemetry, metrics, crash and log collection
+# ---------------------------------------------------------------
+com.amazon.device.crashmanager       # [PROTECTED, cannot disable]  uploads crash dumps to Amazon
+com.amazon.device.logmanager         # [PROTECTED, cannot disable]  uploads system logs to Amazon
+com.amazon.dp.logger                 # another log shipper
+com.amazon.device.metrics            # [PROTECTED, cannot disable]  device usage metrics
+com.amazon.tv.fw.metrics             # framework-level metrics
+com.amazon.wirelessmetrics.service   # Wi-Fi and network metrics
+com.amazon.perfcollection            # performance sampling
+com.amazon.connectivitydiag          # connectivity diagnostics reporting
+com.amazon.wifilocker                # uploads your saved Wi-Fi passwords to Amazon
+
+# ---------------------------------------------------------------
+# 3. Factory, demo and engineering test tools
+# ---------------------------------------------------------------
+com.amazon.device.sale.service       # in-store retail demo mode
+com.amazon.tv.democontent.provider   # demo loop content
+com.amazon.audiolatencymeasurer      # audio latency test tool
+com.amazon.tv.resolutioncycler       # display resolution test tool
+
+# ---------------------------------------------------------------
+# 4. Tutorials, onboarding and static info screens
+# ---------------------------------------------------------------
+com.amazon.storm.lightning.tutorial  # "how to use your remote" tutorial
+com.amazon.tmm.tutorial              # first-run walkthrough
+com.amazon.tv.turnstile              # first-run gate
+com.amazon.tv.oobe                   # [PROTECTED, cannot disable]  out-of-box setup wizard (already completed)
+com.amazon.tv.releasenotes           # release notes viewer
+com.amazon.tv.legal.notices          # legal text viewer
+com.amazon.tv.support                # support/help app
+com.amazon.tv.csapp                  # [PROTECTED, cannot disable]  customer service contact app
+
+# ---------------------------------------------------------------
+# 5. Amazon apps and storefronts you are not using
+# ---------------------------------------------------------------
+com.amazon.shoptv.client             # Amazon Shopping on TV
+com.amazon.shoptv.firetv.client      # Amazon Shopping on TV (client half)
+com.amazon.bueller.music             # Amazon Music
+com.amazon.bueller.photos            # Amazon Photos
+com.amazon.gamehub                   # Amazon Game Hub
+com.amazon.minitv.android.app        # Amazon MiniTV
+com.amazon.naatyam                   # Amazon regional content app
+com.amazon.imdb.tv.android.app       # IMDb TV / Freevee
+com.imdb.livingroom.firetv           # IMDb
+com.amazon.ods.kindleconnect         # Kindle integration
+com.amazon.tahoe                     # Amazon Kids / FreeTime
+
+# ---------------------------------------------------------------
+# 6. Screensaver and profile picker clutter
+# ---------------------------------------------------------------
+com.amazon.ftv.screensaver           # Amazon screensaver (carries sponsored images)
+com.amazon.ftv.profilepicker         # "who's watching" profile chooser
+com.amazon.ftv.xpicker               # related picker UI
+
+# ---------------------------------------------------------------
+# 7. Alexa nags (voice itself stays working)
+# ---------------------------------------------------------------
+com.amazon.tv.alexaalerts            # Alexa alarms and timers on screen
+com.amazon.tv.alexanotifications     # Alexa notification cards
+
+# ---------------------------------------------------------------
+# 8. Firmware updates (you chose to block these)
+# ---------------------------------------------------------------
+com.amazon.device.software.ota          # [PROTECTED, cannot disable]  the OTA updater itself
+com.amazon.device.software.ota.override # [PROTECTED, cannot disable]  override channel for forced updates
+com.amazon.tv.forcedotaupdater.v2       # forces updates regardless of settings
+com.amazon.tv.easyupgrade               # staged upgrade helper
+
+# ---------------------------------------------------------------
+# Notes
+# ---------------------------------------------------------------
+# 8 of the 46 above are marked [PROTECTED]. Amazon blocks "pm disable-user" on them and the
+# command returns a SecurityException. Leaving them in the list is harmless: a re-run simply
+# reports the same error for those lines and disables everything else.
+#
+# com.amazon.ftvads.deeplinking is the ad service and is protected, but it has no screen of its
+# own. The stock launcher is what draws the ads, so replacing the launcher removes them anyway.
+#
+# The OTA packages are protected too, so firmware updates cannot be fully blocked from the TV.
+# To block them, deny these hosts at your router or DNS server:
+#   softwareupdates.amazon.com
+#   amzdigitaldownloads.edgesuite.net

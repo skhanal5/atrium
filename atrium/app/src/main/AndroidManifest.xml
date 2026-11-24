@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- This is a normal permission, granted at
+         install time, and is used for one thing: to show a quiet warning when the
+         TV is offline. Nothing is sent anywhere. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Read Home presses from the system log. Granted explicitly over ADB. -->
+    <uses-permission android:name="android.permission.READ_LOGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Needed so Atrium can open itself when the TV is switched on. It is a
+         normal permission, granted at install, and is used for nothing else. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:banner="@drawable/banner"
+        android:theme="@style/Theme.Atrium"
+        android:hardwareAccelerated="true"
+        android:allowBackup="false"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".AtriumActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:excludeFromRecents="true"
+            android:clearTaskOnLaunch="true"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|uiMode|navigation"
+            android:screenOrientation="landscape">
+
+            <!-- Fire OS ignores the default Home choice. HomeKeyService follows
+                 remote Home presses instead. See README.md. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- LEANBACK_LAUNCHER puts Atrium in the Fire TV app row so it can be
+                 opened with the remote. LAUNCHER is the fallback for any surface
+                 that does not use the leanback category. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- Hears the screen come on and opens Atrium over the Amazon home
+             screen. This is what makes switching the TV on land here. -->
+        <service
+            android:name=".system.WakeService"
+            android:exported="false" />
+        <service
+            android:name=".system.HomeKeyService"
+            android:exported="false" />
+
+        <receiver
+            android:name=".system.BootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Watches for the Amazon home screen and opens Atrium over it.
+             Off until the user switches it on, and it reads nothing but the
+             name of the window that just opened. See HomeWatcher.java. -->
+        <service
+            android:name=".system.HomeWatcher"
+            android:exported="true"
+            android:label="@string/watcher_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/home_watcher" />
+        </service>
+    </application>
+</manifest>

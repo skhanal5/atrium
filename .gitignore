@@ -1,0 +1,15 @@
+# Build output
+atrium/app/build/
+atrium/.gradle/
+atrium/local.properties
+
+# Python virtual environment for the ADB client
+tools/venv/
+tools/__pycache__/
+
+# ADB private key. This authorises this Mac to the TV. Never commit it.
+tools/adbkey
+tools/adbkey.pub
+
+# macOS
+.DS_Store

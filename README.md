@@ -3,6 +3,10 @@
 Debloat and a custom home screen for a Toshiba Fire TV Edition, driven over ADB
 from this Mac.
 
+> **Not affiliated with Amazon, Toshiba or TMDB.** The debloat and the home
+> screen change how your TV works. Use them at your own risk. See
+> [Disclaimer](#disclaimer).
+
 ## The TV
 
 | | |
@@ -259,6 +263,27 @@ TV_HOST=10.0.0.71 tools/venv/bin/python -I tools/tv.py --pull /sdcard/s.png shot
 
 An earlier note in this file said `screencap` returns an all black image on this
 device. That is wrong. It works.
+
+## Disclaimer
+
+- This is a personal hobby project. Amazon, Toshiba, TMDB and the streaming
+  services named here do not make, endorse or support it.
+- Amazon, Fire TV, Fire OS, Prime Video and Amazon Appstore are trademarks of
+  Amazon.com, Inc. or its affiliates. Toshiba is a trademark of Toshiba
+  Corporation. Other names and logos belong to their owners. They appear here
+  only to say what Atrium works with.
+- The screenshots show movie and show artwork from TMDB. That artwork belongs
+  to its owners. It appears only to show what Atrium looks like.
+- Atrium does not unlock, copy or bypass paid content. It opens the apps you
+  already have, and shows where TMDB says a title can be watched.
+- The debloat disables apps that came with the TV, including the app that
+  forces updates. This can break features, and a TV that misses updates can
+  miss security fixes. `firetv/restore.sh` turns the apps back on.
+- Changing your TV may affect your warranty. Check your warranty terms first.
+- Read each script before you run it. You are responsible for what it does to
+  your device.
+- The software is provided "as is", without warranty of any kind. See
+  `LICENSE`.
 
 ## Credit
 

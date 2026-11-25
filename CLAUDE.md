@@ -30,7 +30,16 @@ follow them exactly.
 ### How to merge
 
 - The repo allows **squash merges only**:
-  `gh pr merge <n> --squash --delete-branch`.
+  `gh pr merge <n> --squash --delete-branch --author-email 74752121+skhanal5@users.noreply.github.com`.
+- The repo is meant to be public. The owner's personal email must never appear in it.
+  - Without `--author-email`, GitHub uses the account's personal email for
+    the merge commit.
+  - After each merge, check the author: `git log -1 --format='%ae %ce' origin/main`.
+    Both must be the noreply address or `noreply@github.com`.
+  - Commit with this repo's `user.email` set to the noreply address. Check it
+    with `git config user.email` before the first commit.
+  - A commit that leaks the email stays in GitHub's saved PR refs even after a
+    force-push. Check before you push, not after.
 - Never push or force-push to `main`.
 - Never merge a pull request someone else opened unless the owner asks.
 - Never merge with a check failing. Fix it, or ask.

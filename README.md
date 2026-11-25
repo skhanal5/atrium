@@ -1,4 +1,4 @@
-# customize-tv
+# atrium
 
 Debloat and a custom home screen for a Toshiba Fire TV Edition, driven over ADB
 from this Mac.
@@ -261,9 +261,9 @@ Movie and show data and artwork come from [TMDB](https://www.themoviedb.org).
 This product uses the TMDB API but is not endorsed or certified by TMDB.
 Where-to-watch data is provided to TMDB by JustWatch.
 
-`atrium/` is original and shares no code with that project. It uses the Jost
+`atrium/` is original and shares no code with that project. It uses the Inter
 typeface under the SIL Open Font Licence, in
-`atrium/FONT-LICENSE-OFL-Jost.txt`.
+`atrium/FONT-LICENSE-OFL-Inter.txt`.
 
 An earlier home screen adapted from that project used to live in `launcher/`.
 It has been removed. Atrium replaces it.

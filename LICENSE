@@ -1,5 +1,10 @@
 MIT License
 
+Copyright (c) 2026 Subodh Khanal
+
+The ADB client in tools/ comes from tv-vibehack
+(https://github.com/Gathin23/tv-vibehack) and keeps its original notice:
+
 Copyright (c) 2026 Gathin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

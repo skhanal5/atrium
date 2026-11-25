@@ -1,4 +1,4 @@
-# customize-tv: rules for working in this repo
+# atrium: rules for working in this repo
 
 This repo holds Atrium, a home screen for one Toshiba Fire TV, and the tools
 used to set up that TV. Read `README.md` first. It has the TV's facts, setup,
@@ -45,7 +45,8 @@ A stacked PR is based on another PR's branch, not on `main`.
   `git rebase --onto origin/main <old base head> <branch>`. Then
   `git push --force-with-lease`, and run the tests again.
 - Never merge a PR into its parent branch. That leaves the work off `main`.
-  This happened with #2 and #3, and #4 had to bring them over.
+  This happened once. Two stacked PRs were merged into their base branches,
+  and a third PR had to bring them over.
 
 ## Building and testing
 

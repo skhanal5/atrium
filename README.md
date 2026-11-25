@@ -61,34 +61,43 @@ The week's trending movies and shows fill the screen. Your apps sit in a row
 under them, each on a plate of its own icon colour. Point the remote at a
 title and its artwork fills the screen.
 
-![Where to watch](firetv/shots/atrium-06-where-to-watch.png)
+| | |
+|---|---|
+| ![Trending this week](firetv/shots/atrium-02-trending.png) | ![On your apps](firetv/shots/atrium-03-on-your-apps.png) |
+| **Trending this week.** The hero follows the focused card. | **On your apps.** Titles included with the streaming apps on this TV. |
+| ![Your genres](firetv/shots/atrium-11-your-genres.png) | ![Popular shows](firetv/shots/atrium-04-popular-shows.png) |
+| **Your genres.** Movies and shows in the genres picked in Settings. | **Popular shows**, as posters. |
 
-Select a title to see where you can watch it in the United States. Apps on
-this TV say **Open**. Apps you do not have say **Get the app** and open their
-Amazon Appstore page.
+### A title, and where to watch it
+
+| | |
+|---|---|
+| ![Detail screen](firetv/shots/atrium-05-detail.png) | ![Where to watch](firetv/shots/atrium-06-where-to-watch.png) |
+| **The detail screen** for one title. | **Where to watch** in the United States. Apps on this TV say **Open**. Others say **Get the app**. |
+
+### Getting apps
+
+![Get apps](firetv/shots/atrium-09-get-apps.png)
 
 **Get apps**, in the top bar and at the end of your apps, lists popular apps
-with a search field. The last card opens the Amazon Appstore for anything else.
+with a search field. An app you have opens. Any other app opens its Amazon
+Appstore page. The last card opens the Appstore for anything else.
 
-**Settings > Genres** picks genres you like. A **Your genres** row then mixes
-popular movies and shows in any of them. With no genres picked, the row is hidden.
+### Settings and menus
 
-Every screen, taken from the TV:
-
-| File | Shows |
+| | |
 |---|---|
-| `atrium-01-home.png` | Home. The hero shows the top five trending titles in turn |
-| `atrium-02-trending.png` | A card in Trending this week focused. The hero follows it |
-| `atrium-03-on-your-apps.png` | Titles included with the streaming apps on this TV |
-| `atrium-04-popular-shows.png` | Popular shows, as posters |
-| `atrium-05-detail.png` | The detail screen for one title |
-| `atrium-06-where-to-watch.png` | Where to watch, with Peacock focused |
-| `atrium-07-app-menu.png` | The menu on an app |
-| `atrium-08-settings.png` | Settings |
-| `atrium-09-get-apps.png` | Get apps: search, popular apps, and the full Appstore |
-| `atrium-10-genres.png` | Settings > Genres. Select turns a genre on or off |
+| ![Settings](firetv/shots/atrium-08-settings.png) | ![Genres](firetv/shots/atrium-10-genres.png) |
+| **Settings.** Each line shows its current value. | **Settings > Genres.** Select turns a genre on or off. With none picked, the Your genres row is hidden. |
+| ![App menu](firetv/shots/atrium-07-app-menu.png) | |
+| **The menu on an app.** Hold Select, or press Menu. | |
 
-`firetv/shots/01-before-stock-home.png` is what the TV looked like before.
+### Before Atrium
+
+| | |
+|---|---|
+| ![Stock home screen](firetv/shots/01-before-stock-home.png) | ![Stock home screen after the debloat](firetv/shots/02-after-debloat-stock-home.png) |
+| The Fire TV home screen as it came. | The same screen after `firetv/debloat.sh`. |
 
 `firetv/shoot-atrium.sh` takes this set again. It drives the remote over ADB,
 so only run it when nobody is watching the TV.

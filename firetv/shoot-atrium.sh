@@ -31,9 +31,15 @@ shoot() {
   echo "  $name"
 }
 
+# restart [seconds]: start Atrium fresh, so focus is on the first app, then
+# wait that long for it to load.
+restart() {
+  printf '%s\n' "am force-stop $PKG" "sleep 1" "am start -n $PKG/.AtriumActivity" "sleep ${1:-0}" \
+    | "$PY" -I "$TV" --batch > /dev/null
+}
+
 echo "--- restart, so every run starts the same way ---"
-printf '%s\n' "am force-stop $PKG" "sleep 1" "am start -n $PKG/.AtriumActivity" \
-  | "$PY" -I "$TV" --batch > /dev/null
+restart
 
 echo "--- shots ---"
 # Focus starts on the first app. Rows below it: Trending, On your apps, Popular shows.
@@ -48,6 +54,18 @@ shoot atrium-07-app-menu          "4 19 19 82" 3
 shoot atrium-08-settings          "4 19 19 22 22 23" 3
 shoot atrium-10-genres            "20 20 23"  3
 shoot atrium-09-get-apps          "4 21 23"   3
+
+echo "--- your genres ---"
+# The row shows only when genres are picked in Settings > Genres. This shot
+# uses whatever is picked and changes nothing. With none picked, it is skipped.
+picked="$(echo "run-as $PKG cat shared_prefs/atrium.xml" | "$PY" -I "$TV" --batch | grep -c 'name="genres">[A-Z]' || true)"
+if [ "$picked" -gt 0 ]; then
+  restart 8
+  # Below the first app: Trending, On your apps, Your genres.
+  shoot atrium-11-your-genres "20 20 20" 4
+else
+  echo "  skipped atrium-11-your-genres: no genres picked"
+fi
 
 echo "--- back to the home screen ---"
 printf '%s\n' "input keyevent 4" "input keyevent 20" "input keyevent 20" "rm -f /sdcard/shot.png" \

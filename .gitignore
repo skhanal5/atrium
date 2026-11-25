@@ -13,3 +13,6 @@ tools/adbkey.pub
 
 # macOS
 .DS_Store
+
+# Personal rules for Claude Code in one checkout. See CLAUDE.md.
+CLAUDE.local.md

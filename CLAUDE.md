@@ -1,48 +1,32 @@
 # atrium: rules for working in this repo
 
-This repo holds Atrium, a home screen for one Toshiba Fire TV, and the tools
-used to set up that TV. Read `README.md` first. It has the TV's facts, setup,
-and what Fire OS allows.
+This repo holds Atrium, a home screen for a Toshiba Fire TV, and the tools used
+to set up that TV. Read `README.md` first. It has the TV's facts, setup, and
+what Fire OS allows.
 
-## Merging pull requests
+Personal settings, such as your TV's address, go in `CLAUDE.local.md`. Git
+ignores that file.
 
-The owner allows Claude to merge its own pull requests into `main`. This was
-granted on 24 November 2026. Merge only when every check below passes, and
-follow them exactly.
+## Pull requests
 
-### Checks before a merge
+- Branch from `main`. Never push or force-push to `main`.
+- The repo allows **squash merges only**.
+- Before a merge:
+  - Every unit test passes. No test was skipped or deleted to pass.
+  - A change to what runs on the TV was checked on a real TV. The PR's
+    Testing section says what was checked.
+  - A PR over 500 lines says why.
 
-1. **Tests pass at the head commit.** Run `./gradlew testDebugUnitTest` in
-   `atrium/`. Every test passes. No test was skipped or deleted to pass.
-2. **Code review approved the head commit.** The `code-review` skill ran on
-   the branch and ended with `Verdict: Approved`. The SHA in its first line
-   matches `git rev-parse --short HEAD`, with no commits after it.
-   - Skip this check only for a change to `.md` files alone.
-3. **It works on the TV.** For any change to what runs on the TV, install the
-   build, use the changed screens with the remote over ADB, and look at
-   screenshots. Put what you checked in the PR's Testing section.
-   - If the TV does not answer, it is asleep. Ask the owner to wake it. Do not
-     merge until it is checked.
-4. **The PR text follows `create-a-pr`.** A PR over 500 lines says why under
-   Risks.
-5. **The base is right, and there are no conflicts.**
+### Keep personal email out of commits
 
-### How to merge
+The repo is public. A personal email in a commit cannot be taken back.
 
-- The repo allows **squash merges only**:
-  `gh pr merge <n> --squash --delete-branch --author-email 74752121+skhanal5@users.noreply.github.com`.
-- The repo is meant to be public. The owner's personal email must never appear in it.
-  - Without `--author-email`, GitHub uses the account's personal email for
-    the merge commit.
-  - After each merge, check the author: `git log -1 --format='%ae %ce' origin/main`.
-    Both must be the noreply address or `noreply@github.com`.
-  - Commit with this repo's `user.email` set to the noreply address. Check it
-    with `git config user.email` before the first commit.
-  - A commit that leaks the email stays in GitHub's saved PR refs even after a
-    force-push. Check before you push, not after.
-- Never push or force-push to `main`.
-- Never merge a pull request someone else opened unless the owner asks.
-- Never merge with a check failing. Fix it, or ask.
+- Commit with your GitHub noreply address. Set it for this repo with
+  `git config user.email <id>+<user>@users.noreply.github.com`.
+- `gh pr merge` uses your account's default email for the merge commit. Pass
+  `--author-email` with your noreply address.
+- GitHub keeps every PR's commits, even after a force-push. Check the email
+  before you push, not after.
 
 ### Stacked pull requests
 
@@ -54,15 +38,13 @@ A stacked PR is based on another PR's branch, not on `main`.
   `git rebase --onto origin/main <old base head> <branch>`. Then
   `git push --force-with-lease`, and run the tests again.
 - Never merge a PR into its parent branch. That leaves the work off `main`.
-  This happened once. Two stacked PRs were merged into their base branches,
-  and a third PR had to bring them over.
 
 ## Building and testing
 
+Set `JAVA_HOME` to a JDK 17 and `ANDROID_HOME` to the Android SDK. Then:
+
 ```sh
 cd atrium
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
-export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 ./gradlew testDebugUnitTest      # unit tests, about 1 second
 ./gradlew assembleDebug          # the APK
 ./gradlew lintDebug              # one error is expected, see below
@@ -75,11 +57,12 @@ export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 
 ## The TV
 
-- Address `10.0.0.71`. Use `tools/tv.py`, not the `adb` binary. The `adb`
-  binary fails on this Mac because of Local Network privacy.
-- Install: `TV_HOST=10.0.0.71 firetv/install-atrium.sh`. It builds, installs
-  and opens Atrium.
-- Run commands: `printf '%s\n' "cmd1" "cmd2" | TV_HOST=10.0.0.71 tools/venv/bin/python -I tools/tv.py --batch`
+Set `TV_HOST` to the TV's IP address.
+
+- Use `tools/tv.py`, not the `adb` binary. The `adb` binary fails on macOS
+  because of Local Network privacy.
+- Install: `firetv/install-atrium.sh`. It builds, installs and opens Atrium.
+- Run commands: `printf '%s\n' "cmd1" "cmd2" | tools/venv/bin/python -I tools/tv.py --batch`
 - Press keys with `input keyevent DPAD_DOWN`, `DPAD_CENTER`, `BACK`, and so on.
   Hold a key with `input keyevent --longpress DPAD_CENTER`.
 - Screenshot: `screencap -p /sdcard/s.png`, then `tools/tv.py --pull /sdcard/s.png <file>`.
@@ -89,9 +72,16 @@ export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
   then `dumpsys gfxinfo dev.skhanal.atrium`.
 - Memory: `dumpsys meminfo dev.skhanal.atrium`. The TV has about 285 MB free.
 - `firetv/shoot-atrium.sh` retakes the README screenshots.
+
+### Checking a change on the TV
+
+- Install the build, use the changed screens with the remote over ADB, and
+  look at screenshots.
 - Driving the remote takes over the TV. Say so before you do it.
-- Put anything you change back the way you found it, such as app order.
-- Screenshots can show the owner's accounts. Check them before you commit them.
+- Put anything you change back the way you found it, such as app order or
+  picked genres.
+- Screenshots can show account or profile names. Check them before you
+  commit them.
 
 ## Android 7.1 traps
 
@@ -118,7 +108,7 @@ The TV runs Android 7.1 (API 25).
 
 ## TMDB
 
-- The token is `TMDB_READ_TOKEN` in `~/.gradle/gradle.properties`.
+- The build reads the token from `TMDB_READ_TOKEN` in `~/.gradle/gradle.properties`.
 - Never print it, put it in a file in this repo, or put it in a commit.
 - Keep the TMDB credit in Settings and in the README.
 
@@ -127,7 +117,7 @@ The TV runs Android 7.1 (API 25).
 - No third-party libraries in the app. Test libraries are fine.
 - Logic that can run without Android goes in plain Java with JUnit tests, in
   `content/` or `ui/FocusGrid`. Drawing code is checked on the TV.
-- Write tests first. Follow the `tdd` and `testing` skills.
+- Write the test first, and watch it fail before you write the code.
 - Comments say why, not what.
 - Text the screens show is in English, in Java, so it can be tested.
 

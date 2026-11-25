@@ -19,13 +19,21 @@ watch or to get a new app.
 ## Where the content comes from
 
 - **TMDB**, a free movie database, with a read access token. See the README.
-- Three rows: Trending this week, On your apps, and Popular shows.
+- Rows: Trending this week, On your apps, Your genres, and Popular shows.
 - "On your apps" is titles included with the streaming apps on this TV. Today
   that is Peacock and Apple TV.
+- "Your genres" is popular movies and shows in any genre picked in Settings.
+  It is hidden until a genre is picked.
+  - TMDB numbers movie and show genres apart. Action is 28 for movies and
+    10759, "Action & Adventure", for shows. `Genre` matches them by name.
+  - Some genres are on one side only. Horror, Romance and Thriller are movies
+    only. Kids and Reality are shows only.
+  - Titles need at least 200 votes on TMDB. Without that floor, the most
+    popular movies included titles with a handful of votes and no picture.
 - Where to watch is TMDB's United States data, which TMDB gets from JustWatch.
 - The rows are saved on the TV. They show at once on start, and still show
-  with the network down. They are fetched again after six hours, or when a
-  streaming app is installed or removed.
+  with the network down. They are fetched again after six hours, when a
+  streaming app is installed or removed, or when other genres are picked.
 
 ## What it does not do
 

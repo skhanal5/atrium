@@ -8,6 +8,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import dev.skhanal.atrium.content.Genre;
+
 /**
  * Everything the user has chosen, kept on the device.
  *
@@ -25,6 +27,7 @@ public final class Prefs {
     private static final String KEY_SEEDED = "seeded";
     private static final String KEY_REPLACE_HOME = "replace_home";
     private static final String KEY_OPENED = "opened_";
+    private static final String KEY_GENRES = "genres";
     private static final String SEP = "\n";
 
     private final SharedPreferences sp;
@@ -82,6 +85,17 @@ public final class Prefs {
 
     public void setReplaceHome(boolean on) {
         sp.edit().putBoolean(KEY_REPLACE_HOME, on).apply();
+    }
+
+    // ---- Your genres ----------------------------------------------------
+
+    /** The genres for the Your genres row. None hides the row. */
+    public Set<Genre> genres() {
+        return Genre.fromNames(split(sp.getString(KEY_GENRES, "")));
+    }
+
+    public void setGenres(Set<Genre> genres) {
+        sp.edit().putString(KEY_GENRES, join(Genre.names(genres))).apply();
     }
 
     // ---- First run ------------------------------------------------------

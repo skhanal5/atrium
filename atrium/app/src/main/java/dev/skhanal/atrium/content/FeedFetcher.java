@@ -28,6 +28,7 @@ public final class FeedFetcher {
     public static final String COUNTRY = "US";
     static final int ROW_SIZE = 12;
     private static final String LANGUAGE = "language=en-US";
+    static final int MIN_VOTES = 200;
 
     private final Tmdb tmdb;
     private final ExecutorService pool;
@@ -40,20 +41,23 @@ public final class FeedFetcher {
 
     /**
      * @param installed package names of the apps on this TV
+     * @param genres    the genres for Your genres. None leaves the row out.
      * @param now       stored as the feed's fetch time
      */
-    public HomeFeed fetch(Set<String> installed, long now) throws IOException {
+    public HomeFeed fetch(Set<String> installed, Set<Genre> genres, long now) throws IOException {
         Map<HomeFeed.Row, List<Title>> rows = new LinkedHashMap<>();
         put(rows, HomeFeed.Row.TRENDING, list("/trending/all/week?" + LANGUAGE, null));
         Set<Integer> services = StreamingApps.includedServices(installed);
         if (!services.isEmpty()) {
             put(rows, HomeFeed.Row.ON_YOUR_APPS, onServices(services));
         }
+        // With no genres chosen, nothing is asked and the row is left out.
+        put(rows, HomeFeed.Row.YOUR_GENRES, inGenres(genres));
         put(rows, HomeFeed.Row.POPULAR_SHOWS, list("/tv/popular?" + LANGUAGE, Title.Kind.TV));
         if (rows.isEmpty()) {
             throw new IOException("TMDB returned no rows");
         }
-        return new HomeFeed(now, withDetails(rows), services);
+        return new HomeFeed(now, withDetails(rows), services, genres);
     }
 
     private static void put(Map<HomeFeed.Row, List<Title>> rows, HomeFeed.Row row, List<Title> titles) {
@@ -71,19 +75,40 @@ public final class FeedFetcher {
         }
     }
 
-    /** Popular movies and shows on these services, taken in turns so neither fills the row. */
+    /** Popular movies and shows on these services, taken in turns. */
     private List<Title> onServices(Set<Integer> services) {
-        StringBuilder ids = new StringBuilder();
-        for (int id : new TreeSet<>(services)) {
-            if (ids.length() > 0) {
-                ids.append('|');
-            }
-            ids.append(id);
-        }
         String query = "?" + LANGUAGE + "&watch_region=" + COUNTRY
-                + "&with_watch_providers=" + Text.urlEncode(ids.toString()) + "&sort_by=popularity.desc";
-        List<Title> movies = list("/discover/movie" + query, Title.Kind.MOVIE);
-        List<Title> shows = list("/discover/tv" + query, Title.Kind.TV);
+                + "&with_watch_providers=" + anyOf(services) + "&sort_by=popularity.desc";
+        return inTurns(list("/discover/movie" + query, Title.Kind.MOVIE),
+                list("/discover/tv" + query, Title.Kind.TV));
+    }
+
+    /** Popular movies and shows in any of these genres, taken in turns. */
+    private List<Title> inGenres(Set<Genre> genres) {
+        // Without a floor, the most popular movies include titles only a handful
+        // of people have rated, some with no picture. Checked against TMDB.
+        String query = "?" + LANGUAGE + "&sort_by=popularity.desc&vote_count.gte=" + MIN_VOTES + "&with_genres=";
+        Set<Integer> movieIds = Genre.movieIds(genres);
+        Set<Integer> showIds = Genre.showIds(genres);
+        return inTurns(
+                movieIds.isEmpty() ? null : list("/discover/movie" + query + anyOf(movieIds), Title.Kind.MOVIE),
+                showIds.isEmpty() ? null : list("/discover/tv" + query + anyOf(showIds), Title.Kind.TV));
+    }
+
+    /** "386|387", encoded for the URL: TMDB's way to ask for any of these ids. */
+    private static String anyOf(Set<Integer> ids) {
+        StringBuilder sb = new StringBuilder();
+        for (int id : new TreeSet<>(ids)) {
+            if (sb.length() > 0) {
+                sb.append('|');
+            }
+            sb.append(id);
+        }
+        return Text.urlEncode(sb.toString());
+    }
+
+    /** One movie, then one show, so neither fills the row. Null when both lists are missing. */
+    private static List<Title> inTurns(List<Title> movies, List<Title> shows) {
         if (movies == null && shows == null) {
             return null;
         }

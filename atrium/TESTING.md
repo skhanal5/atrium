@@ -12,7 +12,35 @@ The first two sections are the current design. The sections after it describe th
 previous design, the generated "room". They are kept because what they found
 about this TV still holds.
 
-## Get apps, 24 November 2026
+## Your genres, 24 November 2026
+
+Tested on the device:
+
+- **Settings > Genres** opens a list of 18 genres. The list is longer than the
+  screen, and it scrolls to follow focus.
+- Select turned Comedy and Science fiction on, and each showed On. The list
+  stayed open between picks.
+- **Done** closed the list. The feed was fetched again, and a **Your genres**
+  row appeared after On your apps, with the note "Comedy and Science fiction".
+  Movies and shows took turns: Iron Man, Black Mirror, The Hunger Games, New Girl.
+- The choice was kept after a reinstall and a restart.
+- Turning both genres off and pressing Back also closed the list. The row was
+  gone after the fetch, and Settings showed Genres as None.
+- Memory, from `dumpsys meminfo` after a restart and a visit to every row:
+  45.6 MB total without genres, 43.3 MB with two genres. The row adds nothing
+  measurable.
+
+Found on the device, and fixed:
+
+- A list long enough to scroll put its title on the dimmed top bar. Menus now
+  start lower.
+
+Found in review, and fixed:
+
+- Genres changed while a fetch was running were dropped until Atrium next came
+  to the front. A load with other genres now waits and runs when the fetch
+  ends. A unit test covers it. It was not timed by hand on the TV.
+
 
 Tested on the device:
 

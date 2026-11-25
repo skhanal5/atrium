@@ -3,6 +3,7 @@ package dev.skhanal.atrium.content;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * The words the home and detail screens use for titles and where to watch them.
@@ -11,6 +12,8 @@ import java.util.Locale;
  * tested. Atrium is English only, like the TMDB data it shows.
  */
 public final class WatchText {
+
+    private static final int SHOWN_GENRES = 3;
 
     private WatchText() {
     }
@@ -82,5 +85,33 @@ public final class WatchText {
             out.add(String.join(", ", d.genres.subList(0, Math.min(2, d.genres.size()))));
         }
         return out;
+    }
+
+    /** "A", "A and B", "A, B and C". */
+    public static String list(List<String> names) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < names.size(); i++) {
+            if (i > 0) {
+                sb.append(i == names.size() - 1 ? " and " : ", ");
+            }
+            sb.append(names.get(i));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * "Comedy and War": the genres the Your genres row is drawn from. Past
+     * three, the rest are counted, so the note stays on one line.
+     */
+    public static String genres(Set<Genre> genres) {
+        List<String> names = new ArrayList<>();
+        for (Genre g : genres) {
+            if (names.size() == SHOWN_GENRES && genres.size() > SHOWN_GENRES) {
+                names.add((genres.size() - SHOWN_GENRES) + " more");
+                break;
+            }
+            names.add(g.label);
+        }
+        return list(names);
     }
 }

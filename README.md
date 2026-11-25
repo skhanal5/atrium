@@ -70,6 +70,9 @@ Amazon Appstore page.
 **Get apps**, in the top bar and at the end of your apps, lists popular apps
 with a search field. The last card opens the Amazon Appstore for anything else.
 
+**Settings > Genres** picks genres you like. A **Your genres** row then mixes
+popular movies and shows in any of them. With no genres picked, the row is hidden.
+
 Every screen, taken from the TV:
 
 | File | Shows |
@@ -83,6 +86,7 @@ Every screen, taken from the TV:
 | `atrium-07-app-menu.png` | The menu on an app |
 | `atrium-08-settings.png` | Settings |
 | `atrium-09-get-apps.png` | Get apps: search, popular apps, and the full Appstore |
+| `atrium-10-genres.png` | Settings > Genres. Select turns a genre on or off |
 
 `firetv/shots/01-before-stock-home.png` is what the TV looked like before.
 
@@ -159,6 +163,7 @@ for measured results and limits.
 
 - Rows of trending movies, titles on your streaming apps, and popular shows,
   with artwork, from TMDB.
+- A Your genres row, from genres picked in Settings. Movies and shows take turns.
 - A detail screen for each title, with where to watch it in the United States.
 - **Open** starts an installed app: Peacock, Apple TV and YouTube were opened
   from the detail screen.

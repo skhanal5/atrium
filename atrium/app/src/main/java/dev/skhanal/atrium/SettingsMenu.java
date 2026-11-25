@@ -4,9 +4,12 @@ import android.content.Context;
 import android.os.Handler;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 
+import dev.skhanal.atrium.content.Genre;
 import dev.skhanal.atrium.data.AppEntry;
 import dev.skhanal.atrium.data.AppRepository;
 import dev.skhanal.atrium.data.Prefs;
@@ -38,6 +41,9 @@ final class SettingsMenu {
         void appsChanged();
 
         void clockChanged(boolean use24);
+
+        /** Other genres were chosen, so the home screen fetches Your genres again. */
+        void genresChanged();
     }
 
     /** One line in the settings menu, with the value it shows on the right. */
@@ -85,6 +91,10 @@ final class SettingsMenu {
             int n = prefs.hidden().size();
             return n == 0 ? "None" : String.valueOf(n);
         }, () -> handler.post(this::openHiddenApps)));
+        items.add(new Setting("Genres", true, () -> {
+            int n = prefs.genres().size();
+            return n == 0 ? "None" : String.valueOf(n);
+        }, () -> handler.post(this::openGenres)));
         for (Handoff.Destination d : Handoff.destinations()) {
             if (d.isAvailable(context)) {
                 items.add(new Setting(context.getString(d.labelRes), true, null, () -> Handoff.open(context, d)));
@@ -154,6 +164,49 @@ final class SettingsMenu {
                 row.setValue(value.get());
             }
         }
+    }
+
+    /**
+     * Pick genres for the Your genres row. Select turns one on or off and the
+     * menu stays open, so several can be picked in one visit.
+     */
+    private void openGenres() {
+        Set<Genre> before = prefs.genres();
+        Set<Genre> chosen = EnumSet.noneOf(Genre.class);
+        chosen.addAll(before);
+        Genre[] all = Genre.values();
+        List<String> options = new ArrayList<>();
+        for (Genre g : all) {
+            options.add(g.label);
+        }
+        options.add("Done");
+        sheet.configure("Genres", options, new Sheet.Callback() {
+            @Override
+            public void onSheetChoice(int index) {
+                if (index == all.length) {
+                    sheet.close();
+                    return;
+                }
+                Genre g = all[index];
+                if (!chosen.remove(g)) {
+                    chosen.add(g);
+                }
+                prefs.setGenres(chosen);
+                sheet.rowAt(index).setValue(chosen.contains(g) ? "On" : null);
+            }
+
+            @Override
+            public void onSheetClosed() {
+                // Back closes the menu too, so the reload waits for the close.
+                if (!chosen.equals(before)) {
+                    host.genresChanged();
+                }
+            }
+        });
+        for (int i = 0; i < all.length; i++) {
+            sheet.rowAt(i).setValue(chosen.contains(all[i]) ? "On" : null);
+        }
+        sheet.open(0);
     }
 
     private void openHiddenApps() {

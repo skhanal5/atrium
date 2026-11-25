@@ -78,4 +78,27 @@ public class WatchTextTest {
 
         assertEquals(Collections.singletonList("2024"), facts);
     }
+
+    @Test
+    public void listsNamesWithCommasThenAnd() {
+        assertEquals("", WatchText.list(Collections.<String>emptyList()));
+        assertEquals("Peacock", WatchText.list(Arrays.asList("Peacock")));
+        assertEquals("Peacock and Apple TV", WatchText.list(Arrays.asList("Peacock", "Apple TV")));
+        assertEquals("Comedy, Drama and War", WatchText.list(Arrays.asList("Comedy", "Drama", "War")));
+    }
+
+    @Test
+    public void genresNoteNamesUpToThreeThenCountsTheRest() {
+        assertEquals("Comedy and War", WatchText.genres(java.util.EnumSet.of(Genre.WAR, Genre.COMEDY)));
+        assertEquals("Action, Comedy, Drama and 2 more", WatchText.genres(java.util.EnumSet.of(
+                Genre.ACTION, Genre.COMEDY, Genre.DRAMA, Genre.HORROR, Genre.WAR)));
+    }
+
+    @Test
+    public void genresNoteCountsFromTheFourthGenre() {
+        assertEquals("Action, Comedy and Drama",
+                WatchText.genres(java.util.EnumSet.of(Genre.ACTION, Genre.COMEDY, Genre.DRAMA)));
+        assertEquals("Action, Comedy, Drama and 1 more",
+                WatchText.genres(java.util.EnumSet.of(Genre.ACTION, Genre.COMEDY, Genre.DRAMA, Genre.WAR)));
+    }
 }

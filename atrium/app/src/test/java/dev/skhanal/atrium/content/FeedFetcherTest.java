@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -24,10 +25,12 @@ import org.junit.Test;
 
 public class FeedFetcherTest {
 
+    private static final Set<Genre> NO_GENRES = EnumSet.noneOf(Genre.class);
     private static final Set<String> PEACOCK = Collections.singleton("com.peacock.peacockfiretv");
 
     /** Answers by path, without the query. Records every request. */
     private static final class FakeTmdb implements Tmdb {
+        static final String GENRES = "?with_genres";
         final Map<String, String> answers = new HashMap<>();
         final Set<String> failing = new HashSet<>();
         final List<String> asked = Collections.synchronizedList(new ArrayList<>());
@@ -36,6 +39,10 @@ public class FeedFetcherTest {
         public String get(String pathAndQuery) throws IOException {
             asked.add(pathAndQuery);
             String path = pathAndQuery.split("\\?")[0];
+            // Genre lists share a path with On your apps, so they get their own key.
+            if (pathAndQuery.contains("with_genres=")) {
+                path += GENRES;
+            }
             if (failing.contains(path)) {
                 throw new IOException("offline");
             }
@@ -96,7 +103,7 @@ public class FeedFetcherTest {
 
     @Test
     public void fetchesThreeRowsInOrderWithDetails() throws Exception {
-        HomeFeed feed = new FeedFetcher(everyRowWorks(), pool).fetch(PEACOCK, 42L);
+        HomeFeed feed = new FeedFetcher(everyRowWorks(), pool).fetch(PEACOCK, NO_GENRES, 42L);
 
         assertEquals(42L, feed.savedAt);
         assertEquals(Arrays.asList(HomeFeed.Row.TRENDING, HomeFeed.Row.ON_YOUR_APPS, HomeFeed.Row.POPULAR_SHOWS),
@@ -109,7 +116,7 @@ public class FeedFetcherTest {
 
     @Test
     public void recordsTheServicesTheFeedWasFetchedFor() throws Exception {
-        HomeFeed feed = new FeedFetcher(everyRowWorks(), pool).fetch(PEACOCK, 0);
+        HomeFeed feed = new FeedFetcher(everyRowWorks(), pool).fetch(PEACOCK, NO_GENRES, 0);
 
         assertEquals(new HashSet<>(Arrays.asList(386, 387)), feed.services);
     }
@@ -118,7 +125,7 @@ public class FeedFetcherTest {
     public void asksForTitlesOnTheInstalledServicesInTheUs() throws Exception {
         FakeTmdb tmdb = everyRowWorks();
 
-        new FeedFetcher(tmdb, pool).fetch(PEACOCK, 0);
+        new FeedFetcher(tmdb, pool).fetch(PEACOCK, NO_GENRES, 0);
 
         String discover = find(tmdb.asked, "/discover/movie?");
         assertTrue(discover, discover.contains("watch_region=US"));
@@ -134,17 +141,67 @@ public class FeedFetcherTest {
         FakeTmdb tmdb = everyRowWorks().list("/discover/movie", null, 3, 6).list("/discover/tv", null, 4, 7)
                 .details("movie", 6).details("tv", 7);
 
-        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, 0);
+        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, NO_GENRES, 0);
 
         assertEquals(Arrays.asList("movie-3", "tv-4", "movie-6", "tv-7"),
                 ids(feed.rows.get(HomeFeed.Row.ON_YOUR_APPS)));
     }
 
     @Test
+    public void fetchesYourGenresAfterOnYourAppsWithMoviesAndShowsInTurns() throws Exception {
+        FakeTmdb tmdb = everyRowWorks()
+                .list("/discover/movie" + FakeTmdb.GENRES, null, 8, 9)
+                .list("/discover/tv" + FakeTmdb.GENRES, null, 10)
+                .details("movie", 8).details("movie", 9).details("tv", 10);
+
+        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, EnumSet.of(Genre.COMEDY), 0);
+
+        assertEquals(Arrays.asList(HomeFeed.Row.TRENDING, HomeFeed.Row.ON_YOUR_APPS, HomeFeed.Row.YOUR_GENRES,
+                HomeFeed.Row.POPULAR_SHOWS), new ArrayList<>(feed.rows.keySet()));
+        assertEquals(Arrays.asList("movie-8", "tv-10", "movie-9"), ids(feed.rows.get(HomeFeed.Row.YOUR_GENRES)));
+        assertEquals(EnumSet.of(Genre.COMEDY), feed.genres);
+    }
+
+    @Test
+    public void asksForAnyOfTheGenresAmongWellRatedTitles() throws Exception {
+        FakeTmdb tmdb = everyRowWorks().list("/discover/movie" + FakeTmdb.GENRES, null, 3)
+                .list("/discover/tv" + FakeTmdb.GENRES, null, 4);
+
+        new FeedFetcher(tmdb, pool).fetch(PEACOCK, EnumSet.of(Genre.ACTION, Genre.HORROR), 0);
+
+        String movies = find(tmdb.asked, "/discover/movie?language=en-US&sort_by");
+        assertTrue(movies, movies.contains("with_genres=27%7C28"));
+        assertTrue(movies, movies.contains("vote_count.gte=200"));
+        assertTrue(find(tmdb.asked, "/discover/tv?language=en-US&sort_by").contains("with_genres=10759"));
+    }
+
+    @Test
+    public void asksOnlyForMoviesWhenNoChosenGenreHasShows() throws Exception {
+        FakeTmdb tmdb = everyRowWorks().list("/discover/movie" + FakeTmdb.GENRES, null, 8).details("movie", 8);
+
+        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, EnumSet.of(Genre.HORROR), 0);
+
+        assertNull(findOrNull(tmdb.asked, "/discover/tv?language=en-US&sort_by"));
+        assertEquals(Arrays.asList("movie-8"), ids(feed.rows.get(HomeFeed.Row.YOUR_GENRES)));
+    }
+
+    @Test
+    public void leavesOutYourGenresWhenNoneAreChosen() throws Exception {
+        FakeTmdb tmdb = everyRowWorks();
+
+        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, NO_GENRES, 0);
+
+        assertFalse(feed.rows.containsKey(HomeFeed.Row.YOUR_GENRES));
+        for (String a : tmdb.asked) {
+            assertFalse(a, a.contains("with_genres"));
+        }
+    }
+
+    @Test
     public void leavesOutYourAppsWhenNoStreamingAppIsInstalled() throws Exception {
         FakeTmdb tmdb = everyRowWorks();
 
-        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(Collections.<String>emptySet(), 0);
+        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(Collections.<String>emptySet(), NO_GENRES, 0);
 
         assertFalse(feed.rows.containsKey(HomeFeed.Row.ON_YOUR_APPS));
         assertNull(findOrNull(tmdb.asked, "/discover/"));
@@ -155,7 +212,7 @@ public class FeedFetcherTest {
         FakeTmdb tmdb = everyRowWorks();
         tmdb.failing.add("/movie/2");
 
-        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, 0);
+        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, NO_GENRES, 0);
 
         assertNull(feed.find("movie-2").details);
         assertNotNull(feed.find("movie-1").details);
@@ -166,7 +223,7 @@ public class FeedFetcherTest {
         FakeTmdb tmdb = everyRowWorks();
         tmdb.failing.add("/tv/popular");
 
-        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, 0);
+        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, NO_GENRES, 0);
 
         assertFalse(feed.rows.containsKey(HomeFeed.Row.POPULAR_SHOWS));
         assertTrue(feed.rows.containsKey(HomeFeed.Row.TRENDING));
@@ -178,7 +235,7 @@ public class FeedFetcherTest {
         tmdb.failing.addAll(Arrays.asList("/trending/all/week", "/discover/movie", "/discover/tv", "/tv/popular"));
 
         try {
-            new FeedFetcher(tmdb, pool).fetch(PEACOCK, 0);
+            new FeedFetcher(tmdb, pool).fetch(PEACOCK, NO_GENRES, 0);
             fail("expected IOException");
         } catch (IOException expected) {
             // The caller keeps the saved feed.
@@ -195,7 +252,7 @@ public class FeedFetcherTest {
         }
         tmdb.list("/trending/all/week", "movie", many);
 
-        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, 0);
+        HomeFeed feed = new FeedFetcher(tmdb, pool).fetch(PEACOCK, NO_GENRES, 0);
 
         assertEquals(12, feed.rows.get(HomeFeed.Row.TRENDING).size());
         assertNull(findOrNull(tmdb.asked, "/movie/112?"));
@@ -205,7 +262,7 @@ public class FeedFetcherTest {
     public void asksForDetailsOnceForATitleInTwoRows() throws Exception {
         FakeTmdb tmdb = everyRowWorks().list("/discover/movie", null, 1);
 
-        new FeedFetcher(tmdb, pool).fetch(PEACOCK, 0);
+        new FeedFetcher(tmdb, pool).fetch(PEACOCK, NO_GENRES, 0);
 
         int count = 0;
         for (String a : tmdb.asked) {

@@ -2,6 +2,7 @@ package dev.skhanal.atrium.content;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,7 +22,7 @@ import org.json.JSONObject;
 public final class HomeFeed {
 
     /** Rows in the order they are drawn. */
-    public enum Row { TRENDING, ON_YOUR_APPS, POPULAR_SHOWS }
+    public enum Row { TRENDING, ON_YOUR_APPS, YOUR_GENRES, POPULAR_SHOWS }
 
     /** After this long the feed is fetched again. TMDB trending changes daily. */
     static final long FRESH_FOR_MS = 6 * 3_600_000L;
@@ -34,15 +35,24 @@ public final class HomeFeed {
      * apps on the TV change, the feed no longer matches and is fetched again.
      */
     public final Set<Integer> services;
+    /** The genres "Your genres" was fetched for. A new choice fetches again. */
+    public final Set<Genre> genres;
 
     public HomeFeed(long savedAt, Map<Row, List<Title>> rows) {
         this(savedAt, rows, Collections.<Integer>emptySet());
     }
 
     public HomeFeed(long savedAt, Map<Row, List<Title>> rows, Set<Integer> services) {
+        this(savedAt, rows, services, Collections.<Genre>emptySet());
+    }
+
+    public HomeFeed(long savedAt, Map<Row, List<Title>> rows, Set<Integer> services, Set<Genre> genres) {
         this.savedAt = savedAt;
         this.rows = Collections.unmodifiableMap(new LinkedHashMap<>(rows));
         this.services = Collections.unmodifiableSet(new HashSet<>(services));
+        Set<Genre> g = EnumSet.noneOf(Genre.class);
+        g.addAll(genres);
+        this.genres = Collections.unmodifiableSet(g);
     }
 
     /** True when the feed is recent enough that fetching again is a waste. */
@@ -76,7 +86,8 @@ public final class HomeFeed {
                 rowsJson.put(new JSONObject().put("row", e.getKey().name()).put("titles", titles));
             }
             return new JSONObject().put("savedAt", savedAt).put("rows", rowsJson)
-                    .put("services", new JSONArray(services)).toString();
+                    .put("services", new JSONArray(services)).put("genres", new JSONArray(Genre.names(genres)))
+                    .toString();
         } catch (JSONException e) {
             // Only a NaN number can cause this, and no field here holds one.
             throw new IllegalStateException(e);
@@ -110,7 +121,12 @@ public final class HomeFeed {
             for (int i = 0; s != null && i < s.length(); i++) {
                 services.add(s.getInt(i));
             }
-            return new HomeFeed(o.getLong("savedAt"), rows, services);
+            List<String> genres = new ArrayList<>();
+            JSONArray g = o.optJSONArray("genres");
+            for (int i = 0; g != null && i < g.length(); i++) {
+                genres.add(g.getString(i));
+            }
+            return new HomeFeed(o.getLong("savedAt"), rows, services, Genre.fromNames(genres));
         } catch (JSONException | IllegalArgumentException e) {
             return null;
         }

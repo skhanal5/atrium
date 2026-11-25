@@ -46,6 +46,7 @@ shoot atrium-05-detail            "19 23"     4
 shoot atrium-06-where-to-watch    "20"        2
 shoot atrium-07-app-menu          "4 19 19 82" 3
 shoot atrium-08-settings          "4 19 19 22 22 23" 3
+shoot atrium-10-genres            "20 20 23"  3
 shoot atrium-09-get-apps          "4 21 23"   3
 
 echo "--- back to the home screen ---"

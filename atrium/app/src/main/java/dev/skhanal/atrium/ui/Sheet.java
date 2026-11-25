@@ -8,6 +8,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,10 +31,14 @@ public final class Sheet extends FrameLayout {
 
     private static final float TITLE_SP = 13f;
     private static final float ROW_WIDTH_DP = 440f;
+    /** Keeps the menu's title below the top bar, which the scrim only dims. */
+    private static final float MARGIN_TOP_DP = 88f;
+    private static final float MARGIN_BOTTOM_DP = 48f;
 
     private final Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint scrimPaint = new Paint();
     private final LinearLayout column;
+    private final ScrollView scroll;
     private final List<SheetRow> rows = new ArrayList<>();
     private Callback callback;
     private boolean open;
@@ -57,12 +62,22 @@ public final class Sheet extends FrameLayout {
 
         column = new LinearLayout(context);
         column.setOrientation(LinearLayout.VERTICAL);
+        // A long menu, such as Genres, does not fit on the screen. The scroll
+        // follows focus on its own, and the faded edges show there is more.
+        scroll = new ScrollView(context);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setVerticalFadingEdgeEnabled(true);
+        scroll.setFadingEdgeLength(Dp.of(48f));
+        scroll.addView(column, new ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
         LayoutParams lp = new LayoutParams(Dp.of(ROW_WIDTH_DP), LayoutParams.WRAP_CONTENT);
         lp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
         // The menu lines up with the hero, so opening one does not move the
         // eye anywhere it was not already looking.
         lp.leftMargin = Dp.of(HomeScreen.MARGIN_DP);
-        addView(column, lp);
+        lp.topMargin = Dp.of(MARGIN_TOP_DP);
+        lp.bottomMargin = Dp.of(MARGIN_BOTTOM_DP);
+        addView(scroll, lp);
     }
 
     public void configure(String title, List<String> labels, Callback callback) {
@@ -70,6 +85,7 @@ public final class Sheet extends FrameLayout {
         this.callback = callback;
         column.removeAllViews();
         rows.clear();
+        scroll.scrollTo(0, 0);
         for (int i = 0; i < labels.size(); i++) {
             final int index = i;
             SheetRow row = new SheetRow(getContext());
@@ -105,12 +121,12 @@ public final class Sheet extends FrameLayout {
         long d = Motion.d(Motion.SHEET);
         if (d == 0) {
             setAlpha(1f);
-            column.setTranslationY(0f);
+            scroll.setTranslationY(0f);
         } else {
             setAlpha(0f);
-            column.setTranslationY(Dp.f(12f));
+            scroll.setTranslationY(Dp.f(12f));
             animate().alpha(1f).setDuration(d).setInterpolator(Motion.SWIFT).start();
-            column.animate().translationY(0f).setDuration(d)
+            scroll.animate().translationY(0f).setDuration(d)
                     .setInterpolator(Motion.SWIFT).start();
         }
         SheetRow row = rowAt(focusIndex);
@@ -185,7 +201,7 @@ public final class Sheet extends FrameLayout {
         canvas.drawRect(0, 0, getWidth(), getHeight(), scrimPaint);
         if (!title.isEmpty()) {
             float x = Dp.f(HomeScreen.MARGIN_DP) + Dp.f(23f);
-            float y = column.getTop() - Dp.f(22f);
+            float y = scroll.getTop() - Dp.f(22f);
             canvas.drawText(title, x, y, titlePaint);
         }
     }

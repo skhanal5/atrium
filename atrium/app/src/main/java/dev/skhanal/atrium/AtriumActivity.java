@@ -269,6 +269,11 @@ public final class AtriumActivity extends Activity
             public void clockChanged(boolean use24) {
                 top.setUse24(use24);
             }
+
+            @Override
+            public void genresChanged() {
+                loadContent();
+            }
         });
 
         setContentView(root);
@@ -314,7 +319,7 @@ public final class AtriumActivity extends Activity
     }
 
     private void loadContent() {
-        content.load(installed, feed -> {
+        content.load(installed, prefs.genres(), feed -> {
             if (home.setFeed(feed, installed)) {
                 current = null;
                 refreshRows();

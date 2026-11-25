@@ -178,7 +178,7 @@ public final class HomeScreen extends FrameLayout {
             if (e.getValue().isEmpty()) {
                 continue;
             }
-            RowView row = rowFor(e.getKey());
+            RowView row = rowFor(e.getKey(), feed);
             boolean poster = e.getKey() == HomeFeed.Row.POPULAR_SHOWS;
             for (Title t : e.getValue()) {
                 TitleCard card = new TitleCard(getContext(), poster);
@@ -199,12 +199,14 @@ public final class HomeScreen extends FrameLayout {
         return true;
     }
 
-    private RowView rowFor(HomeFeed.Row row) {
+    private RowView rowFor(HomeFeed.Row row, HomeFeed feed) {
         switch (row) {
             case TRENDING:
                 return new RowView(getContext(), "Trending this week", null);
             case ON_YOUR_APPS:
                 return new RowView(getContext(), "On your apps", appsNote());
+            case YOUR_GENRES:
+                return new RowView(getContext(), "Your genres", WatchText.genres(feed.genres));
             default:
                 return new RowView(getContext(), "Popular shows", null);
         }
@@ -216,11 +218,7 @@ public final class HomeScreen extends FrameLayout {
         for (TvApp a : StreamingApps.subscriptionApps(installed)) {
             names.add(a.name);
         }
-        if (names.isEmpty()) {
-            return null;
-        }
-        String last = names.remove(names.size() - 1);
-        return names.isEmpty() ? last : android.text.TextUtils.join(", ", names) + " and " + last;
+        return names.isEmpty() ? null : WatchText.list(names);
     }
 
     private WatchOption here(Title t) {

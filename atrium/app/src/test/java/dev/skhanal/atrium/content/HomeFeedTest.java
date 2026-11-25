@@ -92,6 +92,20 @@ public class HomeFeedTest {
     }
 
     @Test
+    public void savedFeedKeepsTheGenresItWasFetchedFor() throws Exception {
+        Map<HomeFeed.Row, List<Title>> rows = new LinkedHashMap<>();
+        HomeFeed saved = new HomeFeed(1L, rows, Collections.<Integer>emptySet(),
+                java.util.EnumSet.of(Genre.COMEDY, Genre.WAR));
+
+        assertEquals(java.util.EnumSet.of(Genre.COMEDY, Genre.WAR), HomeFeed.fromJson(saved.toJson()).genres);
+    }
+
+    @Test
+    public void feedSavedBeforeGenresWereRecordedHasNone() {
+        assertTrue(HomeFeed.fromJson("{\"savedAt\": 5, \"rows\": [], \"services\": [386]}").genres.isEmpty());
+    }
+
+    @Test
     public void feedSavedBeforeServicesWereRecordedHasNone() {
         // Files written by the first version have no "services" field.
         assertTrue(HomeFeed.fromJson("{\"savedAt\": 5, \"rows\": []}").services.isEmpty());
